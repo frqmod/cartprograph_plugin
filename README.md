@@ -14,13 +14,13 @@
    git clone https://github.com/frqmod/cartprograph_plugin
    ```
 2. Place into /plugins directory in angr management
-  ```sh
-  cd cartprograph_plugin
-  cp -R * <angr_management>/angrmanagement/plugins/
-  ```
+   ```sh
+   cd cartprograph_plugin
+   cp -R * <angr_management>/angrmanagement/plugins/
+   ```
 
 3. (optional) Remove readme file
-  ```sh
-  cd <angr_management>/angrmanagement/plugins/
-  rm README.md
-  ```
+   ```sh
+   cd <angr_management>/angrmanagement/plugins/
+   rm README.md
+   ```
