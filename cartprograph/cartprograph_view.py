@@ -27,7 +27,6 @@ class CartprographView(BaseView):
         self.workspace.cartprograph.nodes = {}
         self.workspace.cartprograph.edges = {}
         self.selected_item_id = None
-        self.selected_item_type = None
 
         self._init_widgets()
 
@@ -37,9 +36,7 @@ class CartprographView(BaseView):
 
     def update_graph(self, G):
         # clear nodes/edges dicts
-        self.workspace.cartprograph.nodes = {}
-        self.workspace.cartprograph.edges = {}
-
+        self.workspace.cartprograph.nodes = self.workspace.cartprograph.edges = {}
         self.workspace.cartprograph.displayGraph = nx.DiGraph()
         for n in G.nodes:
             self.add_node(n)
@@ -54,70 +51,38 @@ class CartprographView(BaseView):
     def add_node(self, id):
         # check if id exists already
         if id in self.workspace.cartprograph.nodes:
-            print("CARTPROGRAPHERROR: id already exists in nodes dict!")
-            return False
-        newnode = QCartBlock(False, self, label=self.node_show(id), id=id)
-        self.workspace.cartprograph.nodes.update({id: newnode})
-        return True
+            return
+        self.workspace.cartprograph.nodes.update({id: QCartBlock(False, self, label=self.node_show(id), id=id)})
 
     def add_edge(self, id_from, id_to):
-        edge_tuple = (id_from, id_to)
-        if edge_tuple in self.workspace.cartprograph.edges:
-            print("CARTPROGRAPHERROR: edge_tuple already exists in edges dict!")
-            return False
-        edge = "TEMPORARY"
-        self.workspace.cartprograph.edges.update({edge_tuple: edge})
-        return True
+        if (id_from, id_to) in self.workspace.cartprograph.edges:
+            return
+        self.workspace.cartprograph.edges.update({(id_from, id_to): "TEMPORARY"})
 
-    def select_item(self, id):  # ugly af idk
-        if type(id) is tuple and self.selected_item_id is None:
-            self.selected_item_id = id
-            self.selected_item_type = "edge"
+    def select_item(self, id):
+        #select next node
+        if isinstance(id, tuple):
             self.workspace.cartprograph.edges[id].selected = True
-        elif type(id) is int and self.selected_item_id is None:
-            self.selected_item_id = id
-            self.selected_item_type = "node"
+        else:
             self.workspace.cartprograph.nodes[id].selected = True
-        elif type(id) is tuple:
-            if self.selected_item_type == "edge":
-                self.workspace.cartprograph.edges[
-                    self.selected_item_id
-                ].selected = False
-            else:
-                self.workspace.cartprograph.nodes[
-                    self.selected_item_id
-                ].selected = False
-            self.selected_item_type = "edge"
-            self.workspace.cartprograph.edges[id].selected = True
-            self.selected_item_id = id
-        elif type(id) is int:
-            if self.selected_item_type == "edge":
-                self.workspace.cartprograph.edges[
-                    self.selected_item_id
-                ].selected = False
-            else:
-                self.workspace.cartprograph.nodes[
-                    self.selected_item_id
-                ].selected = False
-            self.selected_item_type = "node"
-            self.workspace.cartprograph.nodes[id].selected = True
-            self.selected_item_id = id
+        #deselect old one
+        if isinstance(self.selected_item_id, tuple):
+            self.workspace.cartprograph.edges[self.selected_item_id].selected = False
+        elif isinstance(self.selected_item_id, int):
+            self.workspace.cartprograph.nodes[self.selected_item_id].selected = False
+        #remember what we selcted
+        self.selected_item_id = id
 
     def node_show(self, id):
         if not self.workspace.cartprograph.graph.nodes[id]["interactions"]:
             return ""
-        return "".join(
-            e["data"]
-            for e in self.workspace.cartprograph.graph.nodes[id]["interactions"]
-        )
+        return "".join(e["data"] for e in self.workspace.cartprograph.graph.nodes[id]["interactions"])
 
     def update_console(self, id):
         if isinstance(id, tuple):
             id = id[0]
         self.console_output.clear()
-        for n in nx.shortest_path(
-            self.workspace.cartprograph.graph, source=0, target=id
-        ):
+        for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
             self.console_output.appendHtml("<b>" + self.node_show(n) + "</b>")
 
     def update_tables(self, id):
@@ -126,12 +91,10 @@ class CartprographView(BaseView):
         functable_data = [[], [], []]
         blocktable_data = [[],[]]
         for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
-            for syscall in self.workspace.cartprograph.graph.nodes[n]["syscalls"]:
+            for syscall, block in zip(self.workspace.cartprograph.graph.nodes[n]["syscalls"],self.workspace.cartprograph.graph.nodes[n]["basic_blocks"]):
                 functable_data[0].append(hex(syscall["nr"]))
                 functable_data[1].append(hex(syscall["ret"]))
                 functable_data[2].append(", ".join(str(arg) for arg in syscall["args"]))
-
-            for block in self.workspace.cartprograph.graph.nodes[n]["basic_blocks"]:
                 blocktable_data[0].append(hex(block))
                 blocktable_data[1].append("todo: find w/ angr") # TODO: resolve func addr w/ angr
 
@@ -201,7 +164,7 @@ class CartprographView(BaseView):
         main_layout.addWidget(main)
         self.setLayout(main_layout)
 
-
+#NOTE: this class isn't strictly useful right now, but might be in the future
 class TableModel(QtCore.QAbstractTableModel):
     def __init__(self, data=None):
         super(TableModel, self).__init__()
@@ -210,23 +173,17 @@ class TableModel(QtCore.QAbstractTableModel):
     def data(self, index, role):
         if self._data is not None:
             if role == Qt.DisplayRole:
-                # See below for the nested-list data structure.
-                # .row() indexes into the outer list,
-                # .column() indexes into the sub-list
                 return self._data[index.column()][index.row()]
+        return 0
 
     def rowCount(self, index):
         if self._data is not None:
-            # The length of the outer list.
             return len(self._data[0])
         else:
             return 0
 
     def columnCount(self, index):
-        # The following takes the first sub-list, and returns
-        # the length (only works if all rows are an equal length)
         if self._data is not None:
-            # The length of the outer list.
             return len(self._data)
         else:
             return 0

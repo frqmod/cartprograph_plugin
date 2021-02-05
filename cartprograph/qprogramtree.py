@@ -1,13 +1,10 @@
 import logging
 
-from PySide2.QtGui import QColor, QPen, QBrush, QPainter
-from PySide2.QtCore import Qt, QPointF
+from PySide2.QtCore import Qt, QPointF, QRectF
 
 from .cartgraphlayouter import CartGraphLayouter
 from .qcartedge import QCartEdge
 from ...ui.widgets.qgraph import QZoomableDraggableGraphicsView
-from ...ui.widgets.qgraph_arrow import QDisasmGraphArrow
-from ...utils.graph_layouter import GraphLayouter
 
 
 l = logging.getLogger("ui.widgets.qpg_graph")
@@ -69,16 +66,11 @@ class QProgramTree(QZoomableDraggableGraphicsView):
 
         self._edges = gl.edges
 
-        min_x, max_x, min_y, max_y = 0, 0, 0, 0
 
         scene = self.scene()
         for node, (x, y) in gl.node_coordinates.items():
             scene.addItem(node)
             node.setPos(x, y)
-            min_x = min(min_x, node.x())
-            max_x = max(max_x, node.x() + node.width)
-            min_y = min(min_y, node.y())
-            max_y = max(max_y, node.y() + node.height)
 
         for edge in self._edges:
             arrow = QCartEdge(edge, self.cartprograph_view)
@@ -88,18 +80,17 @@ class QProgramTree(QZoomableDraggableGraphicsView):
             scene.addItem(arrow)
             arrow.setPos(QPointF(*edge.coordinates[0]))
 
-        min_x -= self.LEFT_PADDING
-        max_x += self.LEFT_PADDING
-        min_y -= self.TOP_PADDING
-        max_y += self.TOP_PADDING
-        width = (max_x - min_x) + 2 * self.LEFT_PADDING
-        height = (max_y - min_y) + 2 * self.TOP_PADDING
-
+        self._update_scene_boundary()
         self._reset_view()
 
     #
     # Private methods
     #
+    def _update_scene_boundary(self):
+        scene = self.scene()
+        # Leave some margins
+        rect = scene.itemsBoundingRect()  # type: QRectF
+        scene.setSceneRect(QRectF(rect.x() - 200, rect.y() - 200, rect.width() + 400, rect.height() + 400))
 
     def _initial_position(self):
         ibr = self.scene().itemsBoundingRect()
