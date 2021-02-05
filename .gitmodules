@@ -1,4 +1,0 @@
-[submodule "angr-management"]
-	path = angr-management
-    url = https://github.com/angr/angr-management
-    ignore = all
