@@ -78,7 +78,11 @@ class CartprographView(BaseView):
     def node_show(self, id):
         if not self.workspace.cartprograph.graph.nodes[id]["interactions"]:
             return ""
-        return "".join(e["data"] for e in self.workspace.cartprograph.graph.nodes[id]["interactions"])
+        return "".join(
+            e["data"]
+            for e in self.workspace.cartprograph.graph.nodes[id]["interactions"]
+            if e["data"] is not None
+        )
 
     def update_console(self, id):
         if isinstance(id, tuple):
@@ -94,8 +98,8 @@ class CartprographView(BaseView):
         blocktable_data = [[],[]]
         for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
             for syscall, block in zip(self.workspace.cartprograph.graph.nodes[n]["syscalls"],self.workspace.cartprograph.graph.nodes[n]["basic_blocks"]):
-                functable_data[0].append(hex(syscall["nr"]))
-                functable_data[1].append(hex(syscall["ret"]))
+                functable_data[0].append(syscall["name"])
+                functable_data[1].append(hex(syscall["ret"]) if syscall["ret"] is not None else '')
                 functable_data[2].append(", ".join(str(arg) for arg in syscall["args"]))
                 blocktable_data[0].append(hex(block))
                 blocktable_data[1].append(self._display_block_function(block))

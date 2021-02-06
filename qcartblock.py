@@ -26,7 +26,7 @@ class QCartBlock(QGraphicsItem):
         self.selected = is_selected
         self._config = Conf
         # widgets
-        self.label = label + "test\nHello World!\n"
+        self.label = label
         self.label_linecount = len(self.label.split("\n"))
         self.id = id
 
