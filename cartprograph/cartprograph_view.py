@@ -13,6 +13,8 @@ from PySide2 import QtCore
 from .qcartblock import QCartBlock
 from .qprogramtree import QProgramTree
 from ...ui.views import BaseView
+from angr.knowledge_plugins import Function
+from typing import Optional
 
 
 class CartprographView(BaseView):
@@ -96,7 +98,7 @@ class CartprographView(BaseView):
                 functable_data[1].append(hex(syscall["ret"]))
                 functable_data[2].append(", ".join(str(arg) for arg in syscall["args"]))
                 blocktable_data[0].append(hex(block))
-                blocktable_data[1].append("todo: find w/ angr") # TODO: resolve func addr w/ angr
+                blocktable_data[1].append(self._display_block_function(block))
 
         self.functable.setRowCount(len(functable_data[0]))
         self.functable.setColumnCount(len(functable_data))
@@ -114,7 +116,50 @@ class CartprographView(BaseView):
                 self.blocktable.setItem(col, row, QTableWidgetItem(str(value)))
         self.blocktable.resizeColumnsToContents()
 
+    def jump_to_disass(self, row: int, col: int):
+        """
+        Jumps to disassembly view from a corresponding table location.
+        Will go to linear view if the address is outside the range of the graph.
+        """
 
+        block_addr = self.blocktable.item(row, col)
+        self.workspace.jump_to(block_addr)
+
+    #
+    #   Utils
+    #
+
+    def _find_block_function(self, block_addr: int) -> Optional[Function]:
+        """
+        Gets the funciton associated with a address.
+
+        """
+
+        cfg = self.workspace.instance.cfg
+        if cfg is None:
+            func = None
+        else:
+            func = cfg.get_any_node(block_addr)
+
+        return func
+
+    def _display_block_function(self, block_addr: int) -> str:
+        """
+        Displays the function associated to the block. Returns empty
+        if either the funciton does not exist or the CFG has not been set.
+
+        """
+
+        func = self._find_block_function(block_addr)
+        display = ""
+        if func is not None:
+            display = f"{func.name}: {hex(func.addr)}"
+
+        return display
+
+    #
+    #   Initialize GUI
+    #
 
     def _init_widgets(self):
         main = QMainWindow()
