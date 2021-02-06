@@ -4,7 +4,7 @@ from PySide2.QtCore import Qt, QPointF, QRectF
 
 from .cartgraphlayouter import CartGraphLayouter
 from .qcartedge import QCartEdge
-from ...ui.widgets.qgraph import QZoomableDraggableGraphicsView
+from angrmanagement.ui.widgets.qgraph import QZoomableDraggableGraphicsView
 
 
 l = logging.getLogger("ui.widgets.qpg_graph")
@@ -65,7 +65,6 @@ class QProgramTree(QZoomableDraggableGraphicsView):
         gl = CartGraphLayouter(self.graph, node_sizes, node_compare_key=lambda n: 0)
 
         self._edges = gl.edges
-
 
         scene = self.scene()
         for node, (x, y) in gl.node_coordinates.items():
