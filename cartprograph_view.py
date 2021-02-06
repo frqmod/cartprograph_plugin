@@ -10,9 +10,9 @@ from PySide2.QtWidgets import (
 from PySide2.QtCore import Qt
 from qtpy import QtWidgets
 from PySide2 import QtCore
+from angrmanagement.ui.views import BaseView
 from .qcartblock import QCartBlock
 from .qprogramtree import QProgramTree
-from ...ui.views import BaseView
 
 
 class CartprographView(BaseView):

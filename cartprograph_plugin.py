@@ -5,10 +5,10 @@ import string
 import random
 from angrmanagement.plugins import BasePlugin
 from PySide2.QtWidgets import QMessageBox
-from angrmanagement.plugins.cartprograph.cartprograph_view import CartprographView
+from .cartprograph_view import CartprographView
 
 
-class Cartprograph(BasePlugin):
+class CartprographPlugin(BasePlugin):
     # adds menu options to the Plugin dropdown
     MENU_BUTTONS = ["Open Messagebox"]
 
@@ -116,4 +116,3 @@ class CartprographGenerator:
                 basic_blocks=self.random_basic_blocks(),
                 syscalls=self.random_syscalls(),
             )
-

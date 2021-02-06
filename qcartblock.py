@@ -4,7 +4,7 @@ from PySide2.QtWidgets import QGraphicsItem
 from PySide2.QtGui import QColor, QPen
 from PySide2.QtCore import Qt, QRectF
 
-from ...config import Conf
+from angrmanagement.config import Conf
 
 
 _l = logging.getLogger(__name__)
@@ -34,7 +34,6 @@ class QCartBlock(QGraphicsItem):
 
         self._init_widgets()
         self._update_size()
-
 
     def _init_widgets(self):
         pass
