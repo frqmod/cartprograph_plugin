@@ -32,8 +32,16 @@ class GraphUpdateNamespace(socketio.ClientNamespace):
         gui_thread_schedule_async(self.callback, args=(node_id,))
 
 
-def initialize_client(graph, update_callback):
-    client = socketio.Client()
-    graph_update_namespace = GraphUpdateNamespace(graph, update_callback)
-    client.register_namespace(graph_update_namespace)
-    client.connect(URL)
+class CartprographClient:
+    def __init__(self, graph, update_callback):
+        self.graph = graph
+        self.update_callback = update_callback
+
+        self.client = socketio.Client()
+        graph_update_namespace = GraphUpdateNamespace(self.graph, self.update_callback)
+        self.client.register_namespace(graph_update_namespace)
+        self.client.connect(URL)
+
+    def send_input(self, node_id, data):
+        response = requests.post(f"{URL}/input/{node_id}", json={"input": data})
+        assert response.json()["success"]
