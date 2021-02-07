@@ -6,7 +6,7 @@ import random
 from angrmanagement.plugins import BasePlugin
 from PySide2.QtWidgets import QMessageBox
 from .cartprograph_view import CartprographView
-from .cartprograph_client import initialize_client
+from .cartprograph_client import CartprographClient
 
 
 class CartprographPlugin(BasePlugin):
@@ -25,8 +25,7 @@ class CartprographPlugin(BasePlugin):
         )
 
         workspace.cartprograph.graph = nx.DiGraph()
-
-        initialize_client(
+        workspace.cartprograph.client = CartprographClient(
             workspace.cartprograph.graph,
             lambda node_id: self.cartprograph_view.update_graph(
                 workspace.cartprograph.graph
