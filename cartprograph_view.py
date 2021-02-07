@@ -89,7 +89,11 @@ class CartprographView(BaseView):
             id = id[0]
         self.console_output.clear()
         for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
-            self.console_output.appendHtml("<b>" + self.node_show(n) + "</b>")
+            # TODO: we need to escape any HTML present in data
+            node = self.workspace.cartprograph.graph.nodes[n]
+            color = "blue" if node["interactions"] and node["interactions"][0]["direction"] == "input" else "black"
+            html = f'<div style="color: {color}">' + self.node_show(n).replace("\n", "<br>") + '</div>'
+            self.console_output.appendHtml(html)
 
     def update_tables(self, id):
         self.functable.setRowCount(0)  # clear table
@@ -207,6 +211,11 @@ class CartprographView(BaseView):
 
         self.console_input = QLineEdit()
         console_group.layout().addWidget(self.console_input)
+        self.console_input.returnPressed.connect(
+            lambda: self.workspace.cartprograph.client.send_input(
+                self.selected_item_id, self.console_input.text() + "\n"
+            )
+        )
 
         main_layout = QVBoxLayout()
 
