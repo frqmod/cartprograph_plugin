@@ -1,6 +1,6 @@
 import logging
 
-from PySide2.QtWidgets import QGraphicsItem
+from PySide2.QtWidgets import QGraphicsItem, QInputDialog, QLineEdit
 from PySide2.QtGui import QColor, QPen
 from PySide2.QtCore import Qt, QRectF
 
@@ -16,7 +16,7 @@ class QCartBlock(QGraphicsItem):
     VERTICAL_PADDING = 5
     LINE_MARGIN = 3
 
-    def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None):
+    def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None, type=None, annotation=""):
         super(QCartBlock, self).__init__()
 
         self.cartprograph_view = cartprograph_view
@@ -24,11 +24,21 @@ class QCartBlock(QGraphicsItem):
 
         self.state = state
         self.selected = is_selected
+        self.highlighted = False
         self._config = Conf
         # widgets
         self.label = label
         self.label_linecount = len(self.label.split("\n"))
         self.id = id
+        self.annotation = annotation
+
+        self.type = type
+        self.normal_background = QColor(0xE6, 0xE6, 0xE6)  # old 0xfa
+        self.selected_background = QColor(0xCC, 0xCC, 0xCC)
+        self.input_background = QColor(230, 219, 163)
+        self.selected_input_background = QColor(219, 199, 94)
+        self.pend_input_background = QColor(130, 157, 209)
+        self.pend_selected_input_background = QColor(85, 134, 230)
 
         self.interactions = []  # dict of stuff
 
@@ -46,6 +56,23 @@ class QCartBlock(QGraphicsItem):
             self.cartprograph_view.redraw_graph()
             event.accept()
 
+        if event.button() == Qt.RightButton:
+            annotation_dialog = QInputDialog()
+            annotation_dialog.setInputMode(QInputDialog.TextInput)
+            annotation_dialog.setLabelText("Annotation:")
+            annotation_dialog.resize(400,100)
+            ok = annotation_dialog.exec_()
+            result = annotation_dialog.textValue()
+
+            if ok:
+                self.annotation = result
+                self.cartprograph_view.store_annotation(self.id, self.annotation)
+                self.cartprograph_view.redraw_graph()
+
+        if event.button() == Qt.MiddleButton:
+            self.cartprograph_view.update_graph(self.cartprograph_view.G)
+            return
+
         super().mouseReleaseEvent(event)
 
     def paint(self, painter, option, widget):  # pylint: disable=unused-argument
@@ -57,15 +84,28 @@ class QCartBlock(QGraphicsItem):
         """
 
         painter.setFont(Conf.symexec_font)
-        normal_background = QColor(0xE6, 0xE6, 0xE6)  # old 0xfa
-        selected_background = QColor(0xCC, 0xCC, 0xCC)
 
         # The node background
-        if self.selected:
-            painter.setBrush(selected_background)
+        if self.type == "pending_input":
+            if self.selected:
+                painter.setBrush(self.pend_selected_input_background)
+            else:
+                painter.setBrush(self.pend_input_background)
+        elif self.type == "input":
+            if self.selected:
+                painter.setBrush(self.selected_input_background)
+            else:
+                painter.setBrush(self.input_background)
         else:
-            painter.setBrush(normal_background)
-        painter.setPen(QPen(QColor(0xE1, 0xE1, 0xE1), 1.5))  # old f0
+            if self.selected:
+                painter.setBrush(self.selected_background)
+            else:
+                painter.setBrush(self.normal_background)
+
+        if self.highlighted:
+            painter.setPen(QPen(QColor(230, 90, 85), 1.5))
+        else:
+            painter.setPen(QPen(QColor(0xE1, 0xE1, 0xE1), 1.5))
         painter.drawRect(0, 0, self.width, self.height)
 
         x = 0
@@ -87,6 +127,12 @@ class QCartBlock(QGraphicsItem):
             painter.drawText(
                 label_x, label_y + self._config.symexec_font_ascent, self.label
             )
+
+        painter.setPen(Qt.darkRed)
+        #draw user_label
+        painter.drawText(
+            label_x, label_y - self._config.symexec_font_ascent*0.5, self.annotation
+        )
 
     @property
     def height(self):

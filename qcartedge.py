@@ -8,24 +8,24 @@ class QCartEdge(QGraphArrow):
         super().__init__(edge, arrow_direction="down", parent=parent)
         self.cartprograph_view = cartprograph_view
         self.color = QColor(0, 0, 0)  # black by default
-        self.selected_color = QColor(158, 8, 0)
+        self.highlighted_color = QColor(230, 90, 85)
         self.style = Qt.SolidLine
-        self.selected = False
+        self.highlighted = False
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.cartprograph_view.select_item((self.edge.src.id, self.edge.dst.id))
-            self.cartprograph_view.update_console(self.edge.src.id)
-            self.cartprograph_view.update_tables(self.edge.src.id)
-            self.cartprograph_view.redraw_graph()
-            event.accept()
+        # if event.button() == Qt.LeftButton:
+        #     self.cartprograph_view.select_item((self.edge.src.id, self.edge.dst.id))
+        #     self.cartprograph_view.update_console(self.edge.src.id)
+        #     self.cartprograph_view.update_tables(self.edge.src.id)
+        #     self.cartprograph_view.redraw_graph()
+        #     event.accept()
 
         super().mouseReleaseEvent(event)
 
     def paint(self, painter, option, widget):
         lod = option.levelOfDetailFromTransform(painter.worldTransform())
-        if self.selected:
-            pen = QPen(self.selected_color, 2, self.style)
+        if self.highlighted:
+            pen = QPen(self.highlighted_color, 2, self.style)
         else:
             pen = QPen(self.color, 2, self.style)
         painter.setPen(pen)
@@ -35,8 +35,8 @@ class QCartEdge(QGraphArrow):
         if lod < 0.3:
             return
 
-        if self.selected:
-            brush = QBrush(self.selected_color)
+        if self.highlighted:
+            brush = QBrush(self.highlighted_color)
         else:
             brush = QBrush(self.color)
         painter.setBrush(brush)

@@ -67,10 +67,6 @@ class QProgramTree(QZoomableDraggableGraphicsView):
         self._edges = gl.edges
 
         scene = self.scene()
-        for node, (x, y) in gl.node_coordinates.items():
-            scene.addItem(node)
-            node.setPos(x, y)
-
         for edge in self._edges:
             arrow = QCartEdge(edge, self.cartprograph_view)
             # popuplate edge dict
@@ -78,6 +74,11 @@ class QProgramTree(QZoomableDraggableGraphicsView):
             self._arrows.append(arrow)
             scene.addItem(arrow)
             arrow.setPos(QPointF(*edge.coordinates[0]))
+
+        for node, (x, y) in gl.node_coordinates.items():
+            scene.addItem(node)
+            node.setPos(x, y)
+
 
         self._update_scene_boundary()
         self._reset_view()
