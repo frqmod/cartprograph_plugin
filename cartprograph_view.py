@@ -64,10 +64,15 @@ class CartprographView(BaseView):
         # check if id exists already
         if id in self.workspace.cartprograph.nodes:
             return
-        self.workspace.cartprograph.nodes.update({id: QCartBlock(False, self, label=self.node_show(id), id=id, type=self.get_node_type(id), annotation=self.get_annotation(id))})
+        self.workspace.cartprograph.nodes.update({id: QCartBlock(False, self, label=self.node_show(id), id=id, type=self.get_node_type(id), annotation=self.get_annotation(id), header=self.get_header(id))})
 
     def store_annotation(self, id, annotation):
         self.workspace.cartprograph.annotations.update({id: annotation})
+
+    def get_header(self, id):
+        if not self.workspace.cartprograph.graph.nodes[id]["interactions"]:
+            return ""
+        return self.workspace.cartprograph.graph.nodes[id]["interactions"][0]["channel"]
 
     def get_annotation(self, id):
         if id in self.workspace.cartprograph.annotations:
@@ -142,11 +147,14 @@ class CartprographView(BaseView):
         for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
             for syscall in self.workspace.cartprograph.graph.nodes[n]["syscalls"]:
                 functable_data[0].append(syscall["name"])
-                functable_data[1].append(hex(syscall["ret"]) if syscall["ret"] is not None else '')
-                functable_data[2].append(", ".join(str(arg) for arg in syscall["args"]))
+                sys = syscall["ret"] if syscall["ret"] is not None else ''
+                if isinstance(sys, int) and abs(sys) >= 0x1000:
+                    sys = hex(sys)
+                functable_data[1].append(sys)
+                functable_data[2].append(", ".join(str(hex(arg) if isinstance(arg, int) and abs(arg) >= 0x1000 else arg) for arg in syscall["args"]))
             for block in self.workspace.cartprograph.graph.nodes[n]["basic_blocks"]:
                 blocktable_data[0].append(hex(block))
-                blocktable_data[1].append(self._display_block_function(block))
+                blocktable_data[1].append(self._display_block_function(bslock))
 
         self.functable.setRowCount(len(functable_data[0]))
         self.functable.setColumnCount(len(functable_data))

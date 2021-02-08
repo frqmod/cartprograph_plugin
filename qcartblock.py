@@ -16,7 +16,7 @@ class QCartBlock(QGraphicsItem):
     VERTICAL_PADDING = 5
     LINE_MARGIN = 3
 
-    def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None, type=None, annotation=""):
+    def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None, type=None, annotation="", header=None):
         super(QCartBlock, self).__init__()
 
         self.cartprograph_view = cartprograph_view
@@ -29,16 +29,18 @@ class QCartBlock(QGraphicsItem):
         # widgets
         self.label = label
         self.label_linecount = len(self.label.split("\n"))
+        self.header = header
+        self.hasHeader = True if self.header is not None else False
         self.id = id
         self.annotation = annotation
 
         self.type = type
         self.normal_background = QColor(0xE6, 0xE6, 0xE6)  # old 0xfa
         self.selected_background = QColor(0xCC, 0xCC, 0xCC)
-        self.input_background = QColor(230, 219, 163)
-        self.selected_input_background = QColor(219, 199, 94)
-        self.pend_input_background = QColor(130, 157, 209)
-        self.pend_selected_input_background = QColor(85, 134, 230)
+        self.pend_input_background = QColor(230, 219, 163)
+        self.pend_selected_input_background = QColor(219, 199, 94)
+        self.input_background = QColor(130, 157, 209)
+        self.selected_input_background = QColor(85, 134, 230)
 
         self.interactions = []  # dict of stuff
 
@@ -116,16 +118,27 @@ class QCartBlock(QGraphicsItem):
         label_y = y + self.VERTICAL_PADDING
         painter.setPen(Qt.black)
 
+        spacing = 1
+        if self.hasHeader:
+            Conf.symexec_font.setBold(True)
+            painter.setFont(Conf.symexec_font)
+            painter.drawText(
+                label_x, label_y + self._config.symexec_font_ascent, self.header
+            )
+            spacing += 1
+            Conf.symexec_font.setBold(False)
+            painter.setFont(Conf.symexec_font)
+
         # multiline text support
         if "\n" in self.label:
             for i, label in enumerate(self.label.split("\n")):
                 painter.drawText(
-                    label_x, label_y + self._config.symexec_font_ascent * (i + 1), label
+                    label_x, label_y + self._config.symexec_font_ascent * (i + spacing), label
                 )
 
         else:
             painter.drawText(
-                label_x, label_y + self._config.symexec_font_ascent, self.label
+                label_x, label_y + self._config.symexec_font_ascent*spacing, self.label
             )
 
         painter.setPen(Qt.darkRed)
