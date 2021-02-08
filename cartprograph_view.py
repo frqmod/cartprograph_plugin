@@ -168,42 +168,29 @@ class CartprographView(BaseView):
     #   Utils
     #
 
-    def _find_block_function(self, block_addr: int) -> Optional[Function]:
-        """
-        Gets the funciton associated with a address.
-
-        """
-
-        cfg = self.workspace.instance.cfg
-        if cfg is None:
-            func = None
-        else:
-            func = cfg.get_any_node(block_addr)
-
-        return func
-
     def _display_block_function(self, block_addr: int) -> str:
         """
         Displays the function associated to the block. Returns empty
         if either the funciton does not exist or the CFG has not been set.
 
         """
-
-        func = self._find_block_function(block_addr)
-        display = ""
-        if func is not None:
-            display = f"{func.name}: {hex(func.addr)}"
-
-        return display
+        cfg = self.workspace.instance.cfg
+        block = cfg.get_any_node(block_addr)
+        if block and block.name:
+            return block.name
+        functions = self.workspace.instance.kb.functions
+        func = functions.get(block_addr)
+        if func and func.name:
+            return func.name
+        return ""
 
     def _handle_table_click(self, row, col):
         """
         Jumps to disassembly view from a corresponding table location.
         Will go to linear view if the address is outside the range of the graph.
         """
-        if col == 0:
-            block_addr = self.blocktable.item(row, col)
-            self.workspace.jump_to(block_addr)
+        block_addr = int(self.blocktable.item(row, 0).text(), 16)
+        self.workspace.jump_to(block_addr)
     #
     #   Initialize GUI
     #

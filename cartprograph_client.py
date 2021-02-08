@@ -11,8 +11,9 @@ URL = "http://localhost:4242/"
 
 
 class GraphUpdateNamespace(socketio.ClientNamespace):
-    def __init__(self, graph, callback, *args, **kwargs):
+    def __init__(self, workspace, graph, callback, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.workspace = workspace
         self.graph = graph
         self.callback = callback
 
@@ -26,6 +27,22 @@ class GraphUpdateNamespace(socketio.ClientNamespace):
             attr: get_trace(attr)
             for attr in ["basic_blocks", "syscalls", "interactions"]
         }
+
+        while True:
+            # TODO: clean this up, this is insane
+            cfg = self.workspace.instance.cfg
+            if cfg is None:
+                time.sleep(1)
+            else:
+                break
+
+        offset = 0x400000 - 0x4000000000
+        node_attrs["basic_blocks"] = [
+            address + offset
+            for address in node_attrs["basic_blocks"]
+            if cfg.get_node(address + offset)
+        ]
+
         self.graph.add_node(node_id, **node_attrs)
         if node_id:
             self.graph.add_edge(parent_id, node_id)
@@ -33,12 +50,17 @@ class GraphUpdateNamespace(socketio.ClientNamespace):
 
 
 class CartprographClient:
-    def __init__(self, graph, update_callback):
+    def __init__(self, workspace, graph, update_callback):
+        self.workspace = workspace
         self.graph = graph
         self.update_callback = update_callback
 
+        print(self.workspace.instance.project)
+
         self.client = socketio.Client()
-        graph_update_namespace = GraphUpdateNamespace(self.graph, self.update_callback)
+        graph_update_namespace = GraphUpdateNamespace(
+            self.workspace, self.graph, self.update_callback
+        )
         self.client.register_namespace(graph_update_namespace)
         self.client.connect(URL)
 
