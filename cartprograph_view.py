@@ -132,12 +132,13 @@ class CartprographView(BaseView):
         if isinstance(id, tuple):
             id = id[0]
         self.console_output.clear()
+        html = ""
         for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
             # TODO: we need to escape any HTML present in data
             node = self.workspace.cartprograph.graph.nodes[n]
             color = "blue" if node["interactions"] and node["interactions"][0]["direction"] == "input" else "black"
-            html = f'<div style="color: {color}">' + self.node_show(n).replace("\n", "<br>") + '</div>'
-            self.console_output.appendHtml(html)
+            html += f'<span style="color: {color}">' + self.node_show(n).replace("\n", "<br>") + '</span>'
+        self.console_output.appendHtml(html)
 
     def update_tables(self, id):
         self.functable.setRowCount(0)  # clear table
@@ -154,7 +155,7 @@ class CartprographView(BaseView):
                 functable_data[2].append(", ".join(str(hex(arg) if isinstance(arg, int) and abs(arg) >= 0x1000 else arg) for arg in syscall["args"]))
             for block in self.workspace.cartprograph.graph.nodes[n]["basic_blocks"]:
                 blocktable_data[0].append(hex(block))
-                blocktable_data[1].append(self._display_block_function(bslock))
+                blocktable_data[1].append(self._display_block_function(block))
 
         self.functable.setRowCount(len(functable_data[0]))
         self.functable.setColumnCount(len(functable_data))

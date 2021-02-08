@@ -12,8 +12,8 @@ _l = logging.getLogger(__name__)
 
 class QCartBlock(QGraphicsItem):
 
-    HORIZONTAL_PADDING = 5
-    VERTICAL_PADDING = 5
+    HORIZONTAL_PADDING = 15
+    VERTICAL_PADDING = 15
     LINE_MARGIN = 3
 
     def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None, type=None, annotation="", header=None):
@@ -175,7 +175,7 @@ class QCartBlock(QGraphicsItem):
             + self.label_linecount * self._config.symexec_font_ascent
         ]
         self._width = max(width_candidates)
-        self._height = max(height_candidates)
+        self._height = max(height_candidates) + self.VERTICAL_PADDING
 
-        self._width = max(100, self._width)
+        self._width = max(120, self._width)
         self._height = max(50, self._height)

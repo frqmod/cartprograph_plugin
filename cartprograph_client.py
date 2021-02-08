@@ -55,8 +55,6 @@ class CartprographClient:
         self.graph = graph
         self.update_callback = update_callback
 
-        print(self.workspace.instance.project)
-
         self.client = socketio.Client()
         graph_update_namespace = GraphUpdateNamespace(
             self.workspace, self.graph, self.update_callback
