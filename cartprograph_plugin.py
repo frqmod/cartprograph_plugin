@@ -26,6 +26,7 @@ class CartprographPlugin(BasePlugin):
 
         workspace.cartprograph.graph = nx.DiGraph()
         workspace.cartprograph.client = CartprographClient(
+            workspace,
             workspace.cartprograph.graph,
             lambda node_id: self.cartprograph_view.update_graph(
                 workspace.cartprograph.graph
