@@ -9,7 +9,7 @@ class QCartEdge(QGraphArrow):
         self.highlighted = False
 
     @property
-    def color(self):
+    def current_color(self):
         return QColor(230, 90, 85) if self.highlighted else QColor(0, 0, 0)
 
     def paint(self, painter, option, widget):
@@ -17,8 +17,8 @@ class QCartEdge(QGraphArrow):
         if detail < 0.3:
             return
 
-        painter.setPen(QPen(self.color, 2, Qt.SolidLine))
+        painter.setPen(QPen(self.current_color, 2, Qt.SolidLine))
         painter.drawPath(self.path)
 
-        painter.setBrush(QBrush(self.color))
+        painter.setBrush(QBrush(self.current_color))
         painter.drawPolygon(self.arrow)

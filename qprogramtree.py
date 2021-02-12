@@ -68,7 +68,7 @@ class QProgramTree(QZoomableDraggableGraphicsView):
 
         scene = self.scene()
         for edge in self._edges:
-            arrow = QCartEdge(edge, self.cartprograph_view)
+            arrow = QCartEdge(edge)
             # popuplate edge dict
             self.workspace.cartprograph.edges[(edge.src.id, edge.dst.id)] = arrow
             self._arrows.append(arrow)
