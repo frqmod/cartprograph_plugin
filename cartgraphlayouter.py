@@ -30,15 +30,15 @@ class CartGraphLayouter:
         self._vertical_edges = None
         self._horizontal_edges = None
 
-        self._grid_max_vertical_id = { }
-        self._grid_max_horizontal_id = { }
-        self._row_to_nodes = { }
-        self._row_heights = [ ]
-        self._col_widths = [ ]
-        self._grid_coordinates = { }
+        self._grid_max_vertical_id = {}
+        self._grid_max_horizontal_id = {}
+        self._row_to_nodes = {}
+        self._row_heights = []
+        self._col_widths = []
+        self._grid_coordinates = {}
 
-        self.edges = [ ]  # type: List[Edge]
-        self.node_coordinates = { }
+        self.edges = []  # type: List[Edge]
+        self.node_coordinates = {}
 
         self._layout()
 
@@ -53,10 +53,19 @@ class CartGraphLayouter:
         acyclic_graph = self._to_acyclic_graph(self.graph, ordered_nodes=ordered_nodes)
 
         # assign row and column to each node
-        self._assign_grid_locations(self.graph, acyclic_graph, ordered_nodes=ordered_nodes)
+        self._assign_grid_locations(
+            self.graph, acyclic_graph, ordered_nodes=ordered_nodes
+        )
 
         # edge routing
-        edge_router = EdgeRouter(self.graph, self._cols, self._rows, self._locations, self._max_col, self._max_row)
+        edge_router = EdgeRouter(
+            self.graph,
+            self._cols,
+            self._rows,
+            self._locations,
+            self._max_col,
+            self._max_row,
+        )
         self.edges = edge_router.edges
         self._vertical_edges = edge_router.vertical_edges
         self._horizontal_edges = edge_router.horizontal_edges
@@ -71,9 +80,9 @@ class CartGraphLayouter:
         self._calculate_coordinates()
 
     def _initialize(self):
-        self._cols = { }
-        self._rows = { }
-        self._locations = { }
+        self._cols = {}
+        self._rows = {}
+        self._locations = {}
 
     def _to_acyclic_graph(self, graph, ordered_nodes=None):
         """
@@ -176,10 +185,14 @@ class CartGraphLayouter:
 
         for row in row_to_nodes.keys():
             if self._node_compare_key is not None:
-                row_to_nodes[row] = sorted(row_to_nodes[row], key=self._node_compare_key)
+                row_to_nodes[row] = sorted(
+                    row_to_nodes[row], key=self._node_compare_key
+                )
             else:
                 # TODO: Use a custom comparator for displaying the CFG, too
-                row_to_nodes[row] = sorted(row_to_nodes[row], key=lambda n_: n_.label, reverse=True)
+                row_to_nodes[row] = sorted(
+                    row_to_nodes[row], key=lambda n_: n_.label, reverse=True
+                )
 
         self._row_to_nodes = row_to_nodes
 
@@ -236,8 +249,12 @@ class CartGraphLayouter:
                     # Not enough predecessors.
                     # update next_min_col and next_max_col
                     col = self._cols[node]
-                    next_min_col = max(next_min_col if next_min_col is not None else 0, col + 2)
-                    next_max_col = max(next_max_col if next_max_col is not None else 0, col + 3)
+                    next_min_col = max(
+                        next_min_col if next_min_col is not None else 0, col + 2
+                    )
+                    next_max_col = max(
+                        next_max_col if next_max_col is not None else 0, col + 3
+                    )
                     continue
 
                 min_col, max_col = next_min_col, next_max_col
@@ -282,7 +299,9 @@ class CartGraphLayouter:
         suggested_col = min_col  # will only be used if overlap is detected
 
         # overlap detection
-        for samerow_node in sorted(self._row_to_nodes[row_idx], key=lambda n: self._cols[n]):
+        for samerow_node in sorted(
+            self._row_to_nodes[row_idx], key=lambda n: self._cols[n]
+        ):
             if samerow_node is node:
                 continue
             samerow_node_col = self._cols[samerow_node]
@@ -309,8 +328,8 @@ class CartGraphLayouter:
         :return: None
         """
 
-        self._row_heights = [ 0 ] * (self._max_row + 2)
-        self._col_widths = [ 0 ] * (self._max_col + 2)
+        self._row_heights = [0] * (self._max_row + 2)
+        self._col_widths = [0] * (self._max_col + 2)
 
         # update grid sizes based on nodes
         for node in self.graph.nodes():
@@ -323,7 +342,10 @@ class CartGraphLayouter:
 
             if self._col_widths[col] < width // 2:
                 self._col_widths[col] = width // 2
-            if col + 1 < len(self._col_widths) and self._col_widths[col + 1] < width // 2:
+            if (
+                col + 1 < len(self._col_widths)
+                and self._col_widths[col + 1] < width // 2
+            ):
                 self._col_widths[col + 1] = width // 2
 
         # update grid sizes based on edges
@@ -375,7 +397,7 @@ class CartGraphLayouter:
         :return: None
         """
 
-        row_max_ids = { }
+        row_max_ids = {}
         for col, row in self._grid_max_horizontal_id.keys():
             if row not in row_max_ids:
                 row_max_ids[row] = self._grid_max_horizontal_id[(col, row)]
@@ -408,13 +430,17 @@ class CartGraphLayouter:
         for node in self.graph.nodes():
             col, row = self._locations[node]
             grid_x, grid_y = self._grid_coordinates[(col, row)]
-            grid_a_width, grid_b_width = self._col_widths[col], self._col_widths[col + 1]
+            grid_a_width, grid_b_width = (
+                self._col_widths[col],
+                self._col_widths[col + 1],
+            )
             grid_height = self._row_heights[row]
             node_width, node_height = self._node_sizes[node]
 
-            self.node_coordinates[node] = (grid_x + ((grid_a_width + grid_b_width) // 2 - node_width // 2),
-                                           grid_y + (grid_height // 2 - node_height // 2)
-                                           )
+            self.node_coordinates[node] = (
+                grid_x + ((grid_a_width + grid_b_width) // 2 - node_width // 2),
+                grid_y + (grid_height // 2 - node_height // 2),
+            )
 
         # edges
         for edge in self.edges:
@@ -428,9 +454,13 @@ class CartGraphLayouter:
             # dst_node_col, dst_node_row = self._locations[edge.dst]
 
             # start point
-            #_, _, start_x_index = edge.points[0]
-            start_x_index = 0 #make all arrows start/end at same point on each node
-            start_point_x_base = src_node_x + src_node_width // 2 - (self.X_MARGIN * (edge.max_start_index + 1) // 2)
+            # _, _, start_x_index = edge.points[0]
+            start_x_index = 0  # make all arrows start/end at same point on each node
+            start_point_x_base = (
+                src_node_x
+                + src_node_width // 2
+                - (self.X_MARGIN * (edge.max_start_index + 1) // 2)
+            )
             start_point_x = self._indexed_x(start_point_x_base, start_x_index)
             start_point = (start_point_x, src_node_y + src_node_height)
             edge.add_coordinate(*start_point)
@@ -443,7 +473,12 @@ class CartGraphLayouter:
             if len(edge.points) > 1:
                 next_col, next_row, next_idx = edge.points[1]
                 starting_col, starting_row = self._locations[edge.src]
-                y_base = self._nointersecting_y(starting_row, starting_col, next_col, default=y_base) + self.ROW_MARGIN
+                y_base = (
+                    self._nointersecting_y(
+                        starting_row, starting_col, next_col, default=y_base
+                    )
+                    + self.ROW_MARGIN
+                )
                 y = self._indexed_y(y_base, next_idx)
             else:
                 y = y_base
@@ -462,7 +497,11 @@ class CartGraphLayouter:
                     # vertical
                     x = prev_x
 
-                    base_y = self._grid_coordinates[(col, row - 1)][1] + self._row_heights[row - 1] + self.ROW_MARGIN
+                    base_y = (
+                        self._grid_coordinates[(col, row - 1)][1]
+                        + self._row_heights[row - 1]
+                        + self.ROW_MARGIN
+                    )
                     if point_id + 1 == len(edge.points) - 2:
                         y = base_y
                     else:
@@ -493,7 +532,11 @@ class CartGraphLayouter:
                 prev_x, prev_y = x, y
 
             # the last point, which is always at the top of the destination node
-            base_x = dst_node_x + dst_node_width // 2 - (self.X_MARGIN * (edge.max_end_index + 1) // 2)
+            base_x = (
+                dst_node_x
+                + dst_node_width // 2
+                - (self.X_MARGIN * (edge.max_end_index + 1) // 2)
+            )
             _, _, end_x_index = edge.points[-1]
             x = self._indexed_x(base_x, end_x_index)
             if x != prev_x:

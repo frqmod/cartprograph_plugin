@@ -79,7 +79,6 @@ class QProgramTree(QZoomableDraggableGraphicsView):
             scene.addItem(node)
             node.setPos(x, y)
 
-
         self._update_scene_boundary()
         self._reset_view()
 
@@ -90,7 +89,11 @@ class QProgramTree(QZoomableDraggableGraphicsView):
         scene = self.scene()
         # Leave some margins
         rect = scene.itemsBoundingRect()  # type: QRectF
-        scene.setSceneRect(QRectF(rect.x() - 200, rect.y() - 200, rect.width() + 400, rect.height() + 400))
+        scene.setSceneRect(
+            QRectF(
+                rect.x() - 200, rect.y() - 200, rect.width() + 400, rect.height() + 400
+            )
+        )
 
     def _initial_position(self):
         ibr = self.scene().itemsBoundingRect()

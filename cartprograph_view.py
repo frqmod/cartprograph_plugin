@@ -5,7 +5,8 @@ from PySide2.QtWidgets import (
     QVBoxLayout,
     QPlainTextEdit,
     QLineEdit,
-    QTableWidgetItem, QAbstractItemView,
+    QTableWidgetItem,
+    QAbstractItemView,
 )
 from PySide2.QtCore import Qt
 from qtpy import QtWidgets
@@ -40,8 +41,6 @@ class CartprographView(BaseView):
         if self._carttree is not None:
             self._carttree.viewport().update()
 
-
-
     def update_graph(self, G):
         self.G = G
         # clear nodes/edges dicts
@@ -64,7 +63,19 @@ class CartprographView(BaseView):
         # check if id exists already
         if id in self.workspace.cartprograph.nodes:
             return
-        self.workspace.cartprograph.nodes.update({id: QCartBlock(False, self, label=self.node_show(id), id=id, type=self.get_node_type(id), annotation=self.get_annotation(id), header=self.get_header(id))})
+        self.workspace.cartprograph.nodes.update(
+            {
+                id: QCartBlock(
+                    False,
+                    self,
+                    label=self.node_show(id),
+                    id=id,
+                    type=self.get_node_type(id),
+                    annotation=self.get_annotation(id),
+                    header=self.get_header(id),
+                )
+            }
+        )
 
     def store_annotation(self, id, annotation):
         self.workspace.cartprograph.annotations.update({id: annotation})
@@ -84,11 +95,11 @@ class CartprographView(BaseView):
         if not ints:
             return None
         if ints[0]["direction"] == "input":
-            if ints[0]['data'] is not None:
+            if ints[0]["data"] is not None:
                 return "input"
             else:
                 return "pending_input"
-        return None # should in theory never happen
+        return None  # should in theory never happen
 
     def add_edge(self, id_from, id_to):
         if (id_from, id_to) in self.workspace.cartprograph.edges:
@@ -96,18 +107,18 @@ class CartprographView(BaseView):
         self.workspace.cartprograph.edges.update({(id_from, id_to): "TEMPORARY"})
 
     def select_item(self, id):
-        #select next node
+        # select next node
         self.workspace.cartprograph.nodes[id].selected = True
         if isinstance(self.selected_item_id, int) and not self.selected_item_id == id:
             self.workspace.cartprograph.nodes[self.selected_item_id].selected = False
-        #remember what we selcted
+        # remember what we selcted
         self.selected_item_id = id
         for n in self.highlighted_item_ids:
             if isinstance(n, tuple):
                 self.workspace.cartprograph.edges[n].highlighted = False
             else:
                 self.workspace.cartprograph.nodes[n].highlighted = False
-        #highlight path
+        # highlight path
         path = nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id)
         for n in path:
             self.workspace.cartprograph.nodes[n].highlighted = True
@@ -116,8 +127,6 @@ class CartprographView(BaseView):
         for eout, ein in zip(path, path[1:]):
             self.workspace.cartprograph.edges[(eout, ein)].highlighted = True
             self.highlighted_item_ids.append((eout, ein))
-
-
 
     def node_show(self, id):
         if not self.workspace.cartprograph.graph.nodes[id]["interactions"]:
@@ -133,26 +142,48 @@ class CartprographView(BaseView):
             id = id[0]
         self.console_output.clear()
         html = ""
-        for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
+        for n in nx.shortest_path(
+            self.workspace.cartprograph.graph, source=0, target=id
+        ):
             # TODO: we need to escape any HTML present in data
             node = self.workspace.cartprograph.graph.nodes[n]
-            color = "blue" if node["interactions"] and node["interactions"][0]["direction"] == "input" else "black"
-            html += f'<span style="color: {color}">' + self.node_show(n).replace("\n", "<br>") + '</span>'
+            color = (
+                "blue"
+                if node["interactions"]
+                and node["interactions"][0]["direction"] == "input"
+                else "black"
+            )
+            html += (
+                f'<span style="color: {color}">'
+                + self.node_show(n).replace("\n", "<br>")
+                + "</span>"
+            )
         self.console_output.appendHtml(html)
 
     def update_tables(self, id):
         self.functable.setRowCount(0)  # clear table
         self.blocktable.setRowCount(0)
         functable_data = [[], [], []]
-        blocktable_data = [[],[]]
-        for n in nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id):
+        blocktable_data = [[], []]
+        for n in nx.shortest_path(
+            self.workspace.cartprograph.graph, source=0, target=id
+        ):
             for syscall in self.workspace.cartprograph.graph.nodes[n]["syscalls"]:
                 functable_data[0].append(syscall["name"])
-                sys = syscall["ret"] if syscall["ret"] is not None else ''
+                sys = syscall["ret"] if syscall["ret"] is not None else ""
                 if isinstance(sys, int) and abs(sys) >= 0x1000:
                     sys = hex(sys)
                 functable_data[1].append(sys)
-                functable_data[2].append(", ".join(str(hex(arg) if isinstance(arg, int) and abs(arg) >= 0x1000 else arg) for arg in syscall["args"]))
+                functable_data[2].append(
+                    ", ".join(
+                        str(
+                            hex(arg)
+                            if isinstance(arg, int) and abs(arg) >= 0x1000
+                            else arg
+                        )
+                        for arg in syscall["args"]
+                    )
+                )
             for block in self.workspace.cartprograph.graph.nodes[n]["basic_blocks"]:
                 blocktable_data[0].append(hex(block))
                 blocktable_data[1].append(self._display_block_function(block))
@@ -200,6 +231,7 @@ class CartprographView(BaseView):
         """
         block_addr = int(self.blocktable.item(row, 0).text(), 16)
         self.workspace.jump_to(block_addr)
+
     #
     #   Initialize GUI
     #
@@ -208,9 +240,7 @@ class CartprographView(BaseView):
         main = QMainWindow()
         main.setWindowFlags(Qt.Widget)
 
-        carttree = QProgramTree(
-            self.workspace, self
-        )
+        carttree = QProgramTree(self.workspace, self)
         self._carttree = carttree
         carttree_dock = QDockWidget("Cartprograph Tree", carttree)
         main.setCentralWidget(carttree_dock)
@@ -260,7 +290,8 @@ class CartprographView(BaseView):
         main_layout.addWidget(main)
         self.setLayout(main_layout)
 
-#NOTE: this class isn't strictly useful right now, but might be in the future
+
+# NOTE: this class isn't strictly useful right now, but might be in the future
 class TableModel(QtCore.QAbstractTableModel):
     def __init__(self, data=None):
         super(TableModel, self).__init__()

@@ -16,7 +16,17 @@ class QCartBlock(QGraphicsItem):
     VERTICAL_PADDING = 15
     LINE_MARGIN = 3
 
-    def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None, type=None, annotation="", header=None):
+    def __init__(
+        self,
+        is_selected,
+        cartprograph_view,
+        state=None,
+        label=None,
+        id=None,
+        type=None,
+        annotation="",
+        header=None,
+    ):
         super(QCartBlock, self).__init__()
 
         self.cartprograph_view = cartprograph_view
@@ -62,7 +72,7 @@ class QCartBlock(QGraphicsItem):
             annotation_dialog = QInputDialog()
             annotation_dialog.setInputMode(QInputDialog.TextInput)
             annotation_dialog.setLabelText("Annotation:")
-            annotation_dialog.resize(400,100)
+            annotation_dialog.resize(400, 100)
             ok = annotation_dialog.exec_()
             result = annotation_dialog.textValue()
 
@@ -133,18 +143,22 @@ class QCartBlock(QGraphicsItem):
         if "\n" in self.label:
             for i, label in enumerate(self.label.split("\n")):
                 painter.drawText(
-                    label_x, label_y + self._config.symexec_font_ascent * (i + spacing), label
+                    label_x,
+                    label_y + self._config.symexec_font_ascent * (i + spacing),
+                    label,
                 )
 
         else:
             painter.drawText(
-                label_x, label_y + self._config.symexec_font_ascent*spacing, self.label
+                label_x,
+                label_y + self._config.symexec_font_ascent * spacing,
+                self.label,
             )
 
         painter.setPen(Qt.darkRed)
-        #draw user_label
+        # draw user_label
         painter.drawText(
-            label_x, label_y - self._config.symexec_font_ascent*0.5, self.annotation
+            label_x, label_y - self._config.symexec_font_ascent * 0.5, self.annotation
         )
 
     @property
