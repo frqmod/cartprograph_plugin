@@ -1,3 +1,4 @@
+import functools
 import networkx as nx
 from PySide2.QtWidgets import (
     QMainWindow,
@@ -7,6 +8,7 @@ from PySide2.QtWidgets import (
     QLineEdit,
     QTableWidgetItem,
     QAbstractItemView,
+    QInputDialog,
 )
 from PySide2.QtCore import Qt
 from qtpy import QtWidgets
@@ -66,16 +68,30 @@ class CartprographView(BaseView):
         self.workspace.cartprograph.nodes.update(
             {
                 id: QCartBlock(
-                    False,
-                    self,
-                    label=self.node_show(id),
+                    functools.partial(self.handle_node_mouse_press, id=id),
                     id=id,
                     type=self.get_node_type(id),
-                    annotation=self.get_annotation(id),
                     header=self.get_header(id),
+                    label=self.node_show(id),
+                    annotation=self.get_annotation(id),
                 )
             }
         )
+
+    def handle_node_mouse_press(self, event, *, id):
+        if event.button() == Qt.LeftButton:
+            self.select_item(id)
+            event.accept()
+
+        elif event.button() == Qt.RightButton:
+            dialog = QInputDialog()
+            dialog.setInputMode(QInputDialog.TextInput)
+            dialog.setLabelText("Annotation:")
+            dialog.resize(400, 100)
+            if dialog.exec_():
+                self.store_annotation(id, dialog.textValue())
+                self.redraw_graph()
+            event.accept()
 
     def store_annotation(self, id, annotation):
         self.workspace.cartprograph.annotations.update({id: annotation})
@@ -127,6 +143,10 @@ class CartprographView(BaseView):
         for eout, ein in zip(path, path[1:]):
             self.workspace.cartprograph.edges[(eout, ein)].highlighted = True
             self.highlighted_item_ids.append((eout, ein))
+
+        self.update_console(id)
+        self.update_tables(id)
+        self.redraw_graph()
 
     def node_show(self, id):
         if not self.workspace.cartprograph.graph.nodes[id]["interactions"]:
