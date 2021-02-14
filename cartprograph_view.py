@@ -59,7 +59,7 @@ class CartprographView(BaseView):
                 self.workspace.cartprograph.nodes[e[0]],
                 self.workspace.cartprograph.nodes[e[1]],
             )
-        self._carttree.set_graph(self.workspace.cartprograph.displayGraph)
+        self._carttree.graph = self.workspace.cartprograph.displayGraph
 
     def add_node(self, id):
         # check if id exists already
@@ -260,7 +260,7 @@ class CartprographView(BaseView):
         main = QMainWindow()
         main.setWindowFlags(Qt.Widget)
 
-        carttree = QProgramTree(self.workspace, self)
+        carttree = QProgramTree(self.workspace)
         self._carttree = carttree
         carttree_dock = QDockWidget("Cartprograph Tree", carttree)
         main.setCentralWidget(carttree_dock)

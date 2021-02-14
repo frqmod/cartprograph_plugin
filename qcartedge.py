@@ -1,5 +1,6 @@
 from PySide2.QtGui import QPen, QColor, QBrush
 from PySide2.QtCore import Qt
+
 from angrmanagement.ui.widgets.qgraph_arrow import QGraphArrow
 
 
