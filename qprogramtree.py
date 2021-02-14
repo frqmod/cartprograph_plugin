@@ -1,8 +1,8 @@
 from PySide2.QtCore import Qt, QPointF, QRectF
 
 from angrmanagement.ui.widgets.qgraph import QZoomableDraggableGraphicsView
+from angrmanagement.utils.graph_layouter import GraphLayouter
 
-from .cartgraphlayouter import CartGraphLayouter
 from .qcartedge import QCartEdge
 
 
@@ -35,7 +35,7 @@ class QProgramTree(QZoomableDraggableGraphicsView):
             return
 
         node_sizes = {node: (node.width, node.height) for node in self.graph.nodes()}
-        layout = CartGraphLayouter(self.graph, node_sizes, node_compare_key=lambda n: 0)
+        layout = GraphLayouter(self.graph, node_sizes, node_compare_key=lambda n: 0)
 
         scene = self.scene()
 

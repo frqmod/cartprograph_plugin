@@ -12,6 +12,8 @@ class CartprographPlugin(BasePlugin):
     def __init__(self, workspace):
         super().__init__(workspace)
 
+        workspace.cartprograph = types.SimpleNamespace()
+
         self.cartprograph_view = CartprographView(workspace, "center")
         workspace.default_tabs += [self.cartprograph_view]
         workspace.add_view(
@@ -20,7 +22,6 @@ class CartprographPlugin(BasePlugin):
             self.cartprograph_view.category,
         )
 
-        workspace.cartprograph = types.SimpleNamespace()
         workspace.cartprograph.graph = nx.DiGraph()
         workspace.cartprograph.client = CartprographClient(
             workspace,

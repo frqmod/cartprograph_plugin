@@ -33,6 +33,8 @@ class QCartBlock(QGraphicsItem):
         self.selected = False
         self.highlighted = False
 
+        self.addr = self.id  # Required for GraphLayouter
+
     @property
     def background_color(self):
         if self.type == "pending_input":
