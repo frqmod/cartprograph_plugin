@@ -1,151 +1,83 @@
-import logging
-
-from PySide2.QtWidgets import QGraphicsItem, QInputDialog, QLineEdit
-from PySide2.QtGui import QColor, QPen
+from PySide2.QtWidgets import QGraphicsItem
+from PySide2.QtGui import QColor, QPen, QFont
 from PySide2.QtCore import Qt, QRectF
 
 from angrmanagement.config import Conf
 
 
-_l = logging.getLogger(__name__)
-
-
 class QCartBlock(QGraphicsItem):
 
     HORIZONTAL_PADDING = 15
-    VERTICAL_PADDING = 15
+    VERTICAL_PADDING = 30
     LINE_MARGIN = 3
 
-    def __init__(self, is_selected, cartprograph_view, state=None, label=None, id=None, type=None, annotation="", header=None):
+    def __init__(
+        self,
+        mouse_press_handler,
+        id,
+        type,
+        header,
+        label,
+        annotation,
+    ):
         super(QCartBlock, self).__init__()
 
-        self.cartprograph_view = cartprograph_view
-        self._workspace = self.cartprograph_view.workspace
+        self.mouse_press_handler = mouse_press_handler
 
-        self.state = state
-        self.selected = is_selected
-        self.highlighted = False
-        self._config = Conf
-        # widgets
-        self.label = label
-        self.label_linecount = len(self.label.split("\n"))
+        self.id = id  # TODO: refactor this out
+        self.type = type
         self.header = header
-        self.hasHeader = True if self.header is not None else False
-        self.id = id
+        self.label = label
         self.annotation = annotation
 
-        self.type = type
-        self.normal_background = QColor(0xE6, 0xE6, 0xE6)  # old 0xfa
-        self.selected_background = QColor(0xCC, 0xCC, 0xCC)
-        self.pend_input_background = QColor(230, 219, 163)
-        self.pend_selected_input_background = QColor(219, 199, 94)
-        self.input_background = QColor(130, 157, 209)
-        self.selected_input_background = QColor(85, 134, 230)
+        self.selected = False
+        self.highlighted = False
 
-        self.interactions = []  # dict of stuff
+        self.addr = self.id  # Required for GraphLayouter
 
-        self._init_widgets()
-        self._update_size()
+    @property
+    def background_color(self):
+        if self.type == "pending_input":
+            return QColor(219, 199, 94) if self.selected else QColor(230, 219, 163)
+        elif self.type == "input":
+            return QColor(85, 134, 230) if self.selected else QColor(130, 157, 209)
+        else:
+            return QColor(204, 204, 204) if self.selected else QColor(230, 230, 230)
 
-    def _init_widgets(self):
-        pass
+    @property
+    def outline_color(self):
+        return QColor(230, 90, 85) if self.highlighted else QColor(225, 225, 225)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.cartprograph_view.select_item(self.id)
-            self.cartprograph_view.update_console(self.id)
-            self.cartprograph_view.update_tables(self.id)
-            self.cartprograph_view.redraw_graph()
-            event.accept()
-
-        if event.button() == Qt.RightButton:
-            annotation_dialog = QInputDialog()
-            annotation_dialog.setInputMode(QInputDialog.TextInput)
-            annotation_dialog.setLabelText("Annotation:")
-            annotation_dialog.resize(400,100)
-            ok = annotation_dialog.exec_()
-            result = annotation_dialog.textValue()
-
-            if ok:
-                self.annotation = result
-                self.cartprograph_view.store_annotation(self.id, self.annotation)
-                self.cartprograph_view.redraw_graph()
-
-        if event.button() == Qt.MiddleButton:
-            self.cartprograph_view.update_graph(self.cartprograph_view.G)
-            return
-
+        self.mouse_press_handler(event)
         super().mouseReleaseEvent(event)
 
-    def paint(self, painter, option, widget):  # pylint: disable=unused-argument
-        """
-        Paint a state block on the scene.
+    def paint(self, painter, option, widget):
+        painter.setBrush(self.background_color)
+        painter.setPen(QPen(self.outline_color, 1.5))
+        painter.drawRect(0, 0, self.width, self.height)
 
-        :param painter:
-        :return: None
-        """
+        x = self.HORIZONTAL_PADDING
+        y = self.VERTICAL_PADDING
+        painter.setPen(Qt.black)
+
+        if self.header:
+            header_font = QFont(Conf.symexec_font)
+            header_font.setBold(True)
+            painter.setFont(header_font)
+            painter.drawText(x, y, self.header)
+            painter.setFont(Conf.symexec_font)
+            y += Conf.symexec_font_ascent
 
         painter.setFont(Conf.symexec_font)
 
-        # The node background
-        if self.type == "pending_input":
-            if self.selected:
-                painter.setBrush(self.pend_selected_input_background)
-            else:
-                painter.setBrush(self.pend_input_background)
-        elif self.type == "input":
-            if self.selected:
-                painter.setBrush(self.selected_input_background)
-            else:
-                painter.setBrush(self.input_background)
-        else:
-            if self.selected:
-                painter.setBrush(self.selected_background)
-            else:
-                painter.setBrush(self.normal_background)
+        for line in self.label.split("\n"):
+            painter.drawText(x, y, line)
+            y += Conf.symexec_font_ascent
 
-        if self.highlighted:
-            painter.setPen(QPen(QColor(230, 90, 85), 1.5))
-        else:
-            painter.setPen(QPen(QColor(0xE1, 0xE1, 0xE1), 1.5))
-        painter.drawRect(0, 0, self.width, self.height)
-
-        x = 0
-        y = 0
-
-        # The addr label
-        label_x = x + self.HORIZONTAL_PADDING
-        label_y = y + self.VERTICAL_PADDING
-        painter.setPen(Qt.black)
-
-        spacing = 1
-        if self.hasHeader:
-            Conf.symexec_font.setBold(True)
-            painter.setFont(Conf.symexec_font)
-            painter.drawText(
-                label_x, label_y + self._config.symexec_font_ascent, self.header
-            )
-            spacing += 1
-            Conf.symexec_font.setBold(False)
-            painter.setFont(Conf.symexec_font)
-
-        # multiline text support
-        if "\n" in self.label:
-            for i, label in enumerate(self.label.split("\n")):
-                painter.drawText(
-                    label_x, label_y + self._config.symexec_font_ascent * (i + spacing), label
-                )
-
-        else:
-            painter.drawText(
-                label_x, label_y + self._config.symexec_font_ascent*spacing, self.label
-            )
-
+        y = self.VERTICAL_PADDING - Conf.symexec_font_ascent
         painter.setPen(Qt.darkRed)
-        #draw user_label
-        painter.drawText(
-            label_x, label_y - self._config.symexec_font_ascent*0.5, self.annotation
-        )
+        painter.drawText(x, y, self.annotation)
 
     @property
     def height(self):
@@ -156,26 +88,12 @@ class QCartBlock(QGraphicsItem):
         return self.boundingRect().width()
 
     def boundingRect(self):
-        return QRectF(0, 0, self._width, self._height)
-
-    #
-    # Private methods
-    #
-
-    def _update_size(self):
-        line_lens = []
-        for line in self.label.split("\n"):
-            line_lens.append(len(line))
-        width_candidates = [
-            self.HORIZONTAL_PADDING * 2
-            + max(line_lens) * self._config.symexec_font_width
-        ]
-        height_candidates = [
-            self.VERTICAL_PADDING * 2
-            + self.label_linecount * self._config.symexec_font_ascent
-        ]
-        self._width = max(width_candidates)
-        self._height = max(height_candidates) + self.VERTICAL_PADDING
-
-        self._width = max(120, self._width)
-        self._height = max(50, self._height)
+        max_line_len = max(len(line) for line in self.label.split("\n"))
+        num_lines = len(self.label.split("\n"))
+        width = max(
+            2 * self.HORIZONTAL_PADDING + max_line_len * Conf.symexec_font_width, 120
+        )
+        height = max(
+            2 * self.VERTICAL_PADDING + num_lines * Conf.symexec_font_ascent, 50
+        )
+        return QRectF(0, 0, width, height)

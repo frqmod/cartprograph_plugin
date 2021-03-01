@@ -1,21 +1,19 @@
-from types import SimpleNamespace
+import types
+
 import networkx as nx
-import itertools
-import string
-import random
+
 from angrmanagement.plugins import BasePlugin
-from PySide2.QtWidgets import QMessageBox
+
 from .cartprograph_view import CartprographView
 from .cartprograph_client import CartprographClient
 
 
 class CartprographPlugin(BasePlugin):
-    # adds menu options to the Plugin dropdown
-    MENU_BUTTONS = ["Open Messagebox"]
-
     def __init__(self, workspace):
         super().__init__(workspace)
-        workspace.cartprograph = SimpleNamespace()
+
+        workspace.cartprograph = types.SimpleNamespace()
+
         self.cartprograph_view = CartprographView(workspace, "center")
         workspace.default_tabs += [self.cartprograph_view]
         workspace.add_view(
@@ -32,17 +30,3 @@ class CartprographPlugin(BasePlugin):
                 workspace.cartprograph.graph
             ),
         )
-
-    # handles the MENU_OPTIONS
-    def handle_click_menu(self, idx):
-        if idx < 0 or idx >= len(self.MENU_BUTTONS):
-            return
-
-        # not sure why this is here
-        if self.workspace.instance.project is None:
-            print("WARN: Project is None.")
-
-        if idx == 0:  # bad, fix later.
-            QMessageBox.critical(
-                self.workspace._main_window, "Test!", "This is a test. You caused this."
-            )
