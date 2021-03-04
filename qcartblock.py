@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import QGraphicsItem
+from PySide2.QtWidgets import QGraphicsItem, QMenu
 from PySide2.QtGui import QColor, QPen, QFont
 from PySide2.QtCore import Qt, QRectF
 
@@ -51,6 +51,8 @@ class QCartBlock(QGraphicsItem):
     def mousePressEvent(self, event):
         self.mouse_press_handler(event)
         super().mouseReleaseEvent(event)
+
+
 
     def paint(self, painter, option, widget):
         painter.setBrush(self.background_color)

@@ -1,6 +1,7 @@
 import collections
 import functools
 import networkx as nx
+from PySide2.QtGui import QCursor
 from PySide2.QtWidgets import (
     QMainWindow,
     QDockWidget,
@@ -9,13 +10,14 @@ from PySide2.QtWidgets import (
     QLineEdit,
     QTableWidgetItem,
     QAbstractItemView,
-    QInputDialog, QTabWidget, QWidget, QHBoxLayout,
+    QInputDialog, QTabWidget, QWidget, QHBoxLayout, QApplication,
 )
 from PySide2.QtCore import Qt, QSize
 from qtpy import QtWidgets
 from PySide2 import QtCore
 from angrmanagement.ui.views import BaseView
 from .qcartblock import QCartBlock
+from .qcartblockcontextmenu import QCartBlockContextMenu
 from .qprogramtree import QProgramTree
 from enum import Enum
 
@@ -44,6 +46,8 @@ class CartprographView(BaseView):
         self.workspace.cartprograph.clear_filters = self.clear_filters
         self.selected_item_id = None
         self.highlighted_item_ids = []
+
+        self._label_menu = QCartBlockContextMenu(self)
 
         self.G = None
 
@@ -92,20 +96,33 @@ class CartprographView(BaseView):
                 id: Vis.VISIBLE
             })
 
+    def label_context_menu(self, id, pos):
+        self._label_menu.id = id
+        self._label_menu.qmenu().exec_(pos)
+
     def handle_node_mouse_press(self, event, *, id):
         if event.button() == Qt.LeftButton:
             self.select_item(id)
             event.accept()
 
-        elif event.button() == Qt.RightButton:
-            dialog = QInputDialog()
-            dialog.setInputMode(QInputDialog.TextInput)
-            dialog.setLabelText("Annotation:")
-            dialog.resize(400, 100)
-            if dialog.exec_():
-                self.store_annotation(id, dialog.textValue())
-                self.redraw_graph()
+
+        elif event.button() == Qt.RightButton and QApplication.keyboardModifiers() == Qt.NoModifier:
+            self.label_context_menu(id, QCursor.pos())
             event.accept()
+
+    def annotate_state(self, id):
+        dialog = QInputDialog()
+        dialog.setInputMode(QInputDialog.TextInput)
+        dialog.setLabelText("Annotation:")
+        dialog.resize(400, 100)
+        if dialog.exec_():
+            self.store_annotation(id, dialog.textValue())
+            self.redraw_graph()
+
+    def delete_state(self, id):
+        #self.workspace.cartprograph.visibility[id] = Vis.DELETED
+        for id in self.workspace.cartprograph.graph.descendants:
+            print(id)
 
     def store_annotation(self, id, annotation):
         self.workspace.cartprograph.nodes[id].annotation = annotation
@@ -344,18 +361,18 @@ class CartprographView(BaseView):
         carttree_dock.setWidget(carttree)
 
         #TODO: THIS NEEDS A REFACTOR.. BAD
-        self.workspace.console_view.tab_widget = QTabWidget()
-        self.workspace.console_view.tab_widget.setTabPosition(QTabWidget.South)
-        self.workspace.console_view.ipython_tab = QWidget()
-        self.workspace.console_view.ipython_tab.setLayout(QHBoxLayout(self.workspace.console_view.ipython_tab))
-        self.workspace.console_view.tab_layout = QHBoxLayout()
-        self.workspace.console_view.ipython_tab.layout().addWidget(self.workspace.console_view._ipython_widget)
-        self.workspace.console_view.tab_widget.addTab(self.workspace.console_view.ipython_tab, "Console")
-        self.workspace.console_view.tab_layout.addWidget(self.workspace.console_view.tab_widget)
-        self.workspace.console_view.layout().setContentsMargins(0, 0, 0, 0)
-        self.workspace.console_view.layout().addLayout(self.workspace.console_view.tab_layout)
-        self.workspace.console_view.min_size = QSize(0, 125)
-        self.workspace.console_view._ipython_widget.push_namespace({'cartprograph': self.workspace.cartprograph})
+        self.workspace.view_manager.first_view_in_category('console').tab_widget = QTabWidget()
+        self.workspace.view_manager.first_view_in_category('console').tab_widget.setTabPosition(QTabWidget.South)
+        self.workspace.view_manager.first_view_in_category('console').ipython_tab = QWidget()
+        self.workspace.view_manager.first_view_in_category('console').ipython_tab.setLayout(QHBoxLayout(self.workspace.view_manager.first_view_in_category('console').ipython_tab))
+        self.workspace.view_manager.first_view_in_category('console').tab_layout = QHBoxLayout()
+        self.workspace.view_manager.first_view_in_category('console').ipython_tab.layout().addWidget(self.workspace.view_manager.first_view_in_category('console')._ipython_widget)
+        self.workspace.view_manager.first_view_in_category('console').tab_widget.addTab(self.workspace.view_manager.first_view_in_category('console').ipython_tab, "Console")
+        self.workspace.view_manager.first_view_in_category('console').tab_layout.addWidget(self.workspace.view_manager.first_view_in_category('console').tab_widget)
+        self.workspace.view_manager.first_view_in_category('console').layout().setContentsMargins(0, 0, 0, 0)
+        self.workspace.view_manager.first_view_in_category('console').layout().addLayout(self.workspace.view_manager.first_view_in_category('console').tab_layout)
+        self.workspace.view_manager.first_view_in_category('console').min_size = QSize(0, 125)
+        self.workspace.view_manager.first_view_in_category('console')._ipython_widget.push_namespace({'cartprograph': self.workspace.cartprograph})
         console_group = QtWidgets.QGroupBox()
         console_group.setLayout(QtWidgets.QVBoxLayout(console_group))
 
@@ -371,7 +388,7 @@ class CartprographView(BaseView):
                 self.selected_item_id, self.console_input.text() + "\n"
             )
         )
-        self.workspace.console_view.tab_widget.addTab(console_group, "Cartprograph Console")
+        self.workspace.view_manager.first_view_in_category('console').tab_widget.addTab(console_group, "Cartprograph Console")
 
         table_tabs = QtWidgets.QTabWidget()
         table_functab = QtWidgets.QWidget()
