@@ -1,3 +1,4 @@
+import collections
 import functools
 import networkx as nx
 from PySide2.QtWidgets import (
@@ -8,16 +9,21 @@ from PySide2.QtWidgets import (
     QLineEdit,
     QTableWidgetItem,
     QAbstractItemView,
-    QInputDialog,
+    QInputDialog, QTabWidget, QWidget, QHBoxLayout,
 )
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Qt, QSize
 from qtpy import QtWidgets
 from PySide2 import QtCore
 from angrmanagement.ui.views import BaseView
 from .qcartblock import QCartBlock
 from .qprogramtree import QProgramTree
-from angr.knowledge_plugins import Function
-from typing import Optional
+from enum import Enum
+
+
+class Vis(Enum):
+    VISIBLE = 1
+    HIDDEN = 2
+    DELETED = 3
 
 
 class CartprographView(BaseView):
@@ -32,6 +38,10 @@ class CartprographView(BaseView):
         self.workspace.cartprograph.nodes = {}
         self.workspace.cartprograph.edges = {}
         self.workspace.cartprograph.annotations = {}
+        self.workspace.cartprograph.visibility = {}
+        self.workspace.cartprograph.filters = []
+        self.workspace.cartprograph.apply_filter = self.apply_filter
+        self.workspace.cartprograph.clear_filters = self.clear_filters
         self.selected_item_id = None
         self.highlighted_item_ids = []
 
@@ -44,6 +54,7 @@ class CartprographView(BaseView):
             self._carttree.viewport().update()
 
     def update_graph(self, G):
+        print("Updating Graph..")
         self.G = G
         # clear nodes/edges dicts
         self.workspace.cartprograph.nodes = {}
@@ -55,15 +66,14 @@ class CartprographView(BaseView):
 
         for e in G.edges:
             self.add_edge(e[0], e[1])
-            self.workspace.cartprograph.displayGraph.add_edge(
-                self.workspace.cartprograph.nodes[e[0]],
-                self.workspace.cartprograph.nodes[e[1]],
-            )
+
         self._carttree.graph = self.workspace.cartprograph.displayGraph
 
     def add_node(self, id):
         # check if id exists already
         if id in self.workspace.cartprograph.nodes:
+            return
+        if id in self.workspace.cartprograph.visibility and self.workspace.cartprograph.visibility[id] != Vis.VISIBLE:
             return
         self.workspace.cartprograph.nodes.update(
             {
@@ -77,6 +87,10 @@ class CartprographView(BaseView):
                 )
             }
         )
+        if not id in self.workspace.cartprograph.visibility:
+            self.workspace.cartprograph.visibility.update({
+                id: Vis.VISIBLE
+            })
 
     def handle_node_mouse_press(self, event, *, id):
         if event.button() == Qt.LeftButton:
@@ -94,6 +108,7 @@ class CartprographView(BaseView):
             event.accept()
 
     def store_annotation(self, id, annotation):
+        self.workspace.cartprograph.nodes[id].annotation = annotation
         self.workspace.cartprograph.annotations.update({id: annotation})
 
     def get_header(self, id):
@@ -120,7 +135,16 @@ class CartprographView(BaseView):
     def add_edge(self, id_from, id_to):
         if (id_from, id_to) in self.workspace.cartprograph.edges:
             return
+        if any(
+                self.workspace.cartprograph.visibility.get(id_) != Vis.VISIBLE
+                for id_ in [id_from, id_to]
+        ):
+            return
         self.workspace.cartprograph.edges.update({(id_from, id_to): "TEMPORARY"})
+        self.workspace.cartprograph.displayGraph.add_edge(
+            self.workspace.cartprograph.nodes[id_from],
+            self.workspace.cartprograph.nodes[id_to],
+        )
 
     def select_item(self, id):
         # select next node
@@ -148,6 +172,59 @@ class CartprographView(BaseView):
         self.update_tables(id)
         self.redraw_graph()
 
+    def path_traces(self):
+        graph = self.workspace.cartprograph.graph
+        for node in graph.nodes():
+            if graph.out_degree(node) == 0:
+                path = list(nx.shortest_path(graph, 0, node))
+                trace = collections.defaultdict(list)
+                for node in path:
+                    for attr, sub_trace in graph.nodes[node].items():
+                        trace[attr].extend(sub_trace)
+                yield path, trace
+
+    def filter_nodes(self):
+        if len(self.workspace.cartprograph.filters) == 0:
+            # no filters to apply, set all non-deleted nodes to visible
+            for id in self.workspace.cartprograph.graph.nodes:
+                if self.workspace.cartprograph.visibility[id] != Vis.DELETED:
+                    self.workspace.cartprograph.visibility.update({
+                        id: Vis.VISIBLE
+                    })
+        else:
+            #otherwise apply all filters
+            visible_nodes = set()
+            for path, trace in self.path_traces():
+                if all(trace_filter(trace) for trace_filter in self.workspace.cartprograph.filters):
+                    visible_nodes |= set(path)
+
+            for id in self.workspace.cartprograph.graph.nodes:
+                if self.workspace.cartprograph.visibility[id] != Vis.DELETED:
+                    if id in visible_nodes:
+                        self.workspace.cartprograph.visibility.update({
+                            id: Vis.VISIBLE
+                        })
+                    else:
+                        if self.workspace.cartprograph.nodes[id].type == "pending_input" and self.workspace.cartprograph.visibility[list(self.workspace.cartprograph.graph.predecessors(id))[0]] == Vis.VISIBLE:
+                            self.workspace.cartprograph.visibility.update({
+                                id: Vis.VISIBLE
+                            })
+                        else:
+                            self.workspace.cartprograph.visibility.update({
+                                id: Vis.HIDDEN
+                            })
+
+        print(self.workspace.cartprograph.visibility)
+        self.update_graph(self.G)
+
+    def apply_filter(self, fx):
+        self.workspace.cartprograph.filters.append(fx)
+        self.filter_nodes()
+
+    def clear_filters(self):
+        self.workspace.cartprograph.filters = []
+        self.filter_nodes()
+
     def node_show(self, id):
         if not self.workspace.cartprograph.graph.nodes[id]["interactions"]:
             return ""
@@ -163,20 +240,20 @@ class CartprographView(BaseView):
         self.console_output.clear()
         html = ""
         for n in nx.shortest_path(
-            self.workspace.cartprograph.graph, source=0, target=id
+                self.workspace.cartprograph.graph, source=0, target=id
         ):
             # TODO: we need to escape any HTML present in data
             node = self.workspace.cartprograph.graph.nodes[n]
             color = (
                 "blue"
                 if node["interactions"]
-                and node["interactions"][0]["direction"] == "input"
+                   and node["interactions"][0]["direction"] == "input"
                 else "black"
             )
             html += (
-                f'<span style="color: {color}">'
-                + self.node_show(n).replace("\n", "<br>")
-                + "</span>"
+                    f'<span style="color: {color}">'
+                    + self.node_show(n).replace("\n", "<br>")
+                    + "</span>"
             )
         self.console_output.appendHtml(html)
 
@@ -186,7 +263,7 @@ class CartprographView(BaseView):
         functable_data = [[], [], []]
         blocktable_data = [[], []]
         for n in nx.shortest_path(
-            self.workspace.cartprograph.graph, source=0, target=id
+                self.workspace.cartprograph.graph, source=0, target=id
         ):
             for syscall in self.workspace.cartprograph.graph.nodes[n]["syscalls"]:
                 functable_data[0].append(syscall["name"])
@@ -266,11 +343,35 @@ class CartprographView(BaseView):
         main.setCentralWidget(carttree_dock)
         carttree_dock.setWidget(carttree)
 
+        #TODO: THIS NEEDS A REFACTOR.. BAD
+        self.workspace.console_view.tab_widget = QTabWidget()
+        self.workspace.console_view.tab_widget.setTabPosition(QTabWidget.South)
+        self.workspace.console_view.ipython_tab = QWidget()
+        self.workspace.console_view.ipython_tab.setLayout(QHBoxLayout(self.workspace.console_view.ipython_tab))
+        self.workspace.console_view.tab_layout = QHBoxLayout()
+        self.workspace.console_view.ipython_tab.layout().addWidget(self.workspace.console_view._ipython_widget)
+        self.workspace.console_view.tab_widget.addTab(self.workspace.console_view.ipython_tab, "Console")
+        self.workspace.console_view.tab_layout.addWidget(self.workspace.console_view.tab_widget)
+        self.workspace.console_view.layout().setContentsMargins(0, 0, 0, 0)
+        self.workspace.console_view.layout().addLayout(self.workspace.console_view.tab_layout)
+        self.workspace.console_view.min_size = QSize(0, 125)
+        self.workspace.console_view._ipython_widget.push_namespace({'cartprograph': self.workspace.cartprograph})
         console_group = QtWidgets.QGroupBox()
         console_group.setLayout(QtWidgets.QVBoxLayout(console_group))
-        console_dock = QDockWidget("Cartprograph Console", console_group)
-        main.addDockWidget(Qt.BottomDockWidgetArea, console_dock)
-        console_dock.setWidget(console_group)
+
+
+        self.console_output = QPlainTextEdit()
+        self.console_output.setReadOnly(True)
+        console_group.layout().addWidget(self.console_output)
+
+        self.console_input = QLineEdit()
+        console_group.layout().addWidget(self.console_input)
+        self.console_input.returnPressed.connect(
+            lambda: self.workspace.cartprograph.client.send_input(
+                self.selected_item_id, self.console_input.text() + "\n"
+            )
+        )
+        self.workspace.console_view.tab_widget.addTab(console_group, "Cartprograph Console")
 
         table_tabs = QtWidgets.QTabWidget()
         table_functab = QtWidgets.QWidget()
@@ -292,18 +393,6 @@ class CartprographView(BaseView):
         table_dock = QDockWidget("Cartprograph Tables", table_tabs)
         main.addDockWidget(Qt.LeftDockWidgetArea, table_dock)
         table_dock.setWidget(table_tabs)
-
-        self.console_output = QPlainTextEdit()
-        self.console_output.setReadOnly(True)
-        console_group.layout().addWidget(self.console_output)
-
-        self.console_input = QLineEdit()
-        console_group.layout().addWidget(self.console_input)
-        self.console_input.returnPressed.connect(
-            lambda: self.workspace.cartprograph.client.send_input(
-                self.selected_item_id, self.console_input.text() + "\n"
-            )
-        )
 
         main_layout = QVBoxLayout()
 
