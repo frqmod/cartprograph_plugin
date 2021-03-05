@@ -1,6 +1,8 @@
 import types
 
 import networkx as nx
+from PySide2.QtGui import QColor
+from PySide2.QtCore import Qt
 
 from angrmanagement.plugins import BasePlugin
 
@@ -37,7 +39,22 @@ class CartprographPlugin(BasePlugin):
         )
 
     def handle_filter(self, context_menu):
-        insn_addr = context_menu.insn_addr
+        addr = context_menu.insn_addr
+        cfg = self.workspace.instance.cfg
+        node = cfg.get_any_node(addr, anyaddr=True)
         self.workspace.cartprograph.apply_filter(
-            lambda trace: insn_addr in trace["basic_blocks"]
+            lambda trace: node.addr in trace["basic_blocks"]
         )
+
+    def handle_click_block(self, qblock, event):
+        if event.button() == Qt.LeftButton:
+            addr = qblock.addr
+            # TODO: highlight Cartprograph node traces which include this basic block
+
+    def color_block(self, addr):
+        # TODO: QEMU uses super-basic-blocks, we need to convert super-basic-blocks into their set of smaller (angr) basic blocks
+        graph = self.workspace.cartprograph.graph
+        for node in graph.nodes():
+            for traced_address in graph.nodes[node]["basic_blocks"]:
+                if traced_address == addr:
+                    return QColor(0xDA, 0xFA, 0xFA)
