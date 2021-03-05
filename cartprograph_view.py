@@ -71,7 +71,7 @@ class CartprographView(BaseView):
         for e in G.edges:
             self.add_edge(e[0], e[1])
 
-        self.deselect_all_items()
+        # self.deselect_all_items()
 
         self._carttree.graph = self.workspace.cartprograph.displayGraph
 
