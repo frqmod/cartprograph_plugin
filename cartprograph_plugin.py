@@ -38,6 +38,33 @@ class CartprographPlugin(BasePlugin):
             "Cartprograph &filter", self.handle_filter, add_separator_first=True
         )
 
+        # TODO: proper callback system on symbolic execution plugin
+        unique_inputs_from_simgr = set()
+        original_add_job = workspace.instance.add_job
+
+        def new_add_job(self, job):
+            if job.__class__.__name__ == "SimgrExploreJob":
+                original_finish = job.finish
+
+                def new_finish(self, *args, **kwargs):
+                    if job._simgr.found:
+                        print(job._simgr.found)
+                        for state in job._simgr.found:
+                            print(state)
+                            result = state.posix.dumps(0).decode("latin").split("\n")[0]
+                            print(result)
+                            if result not in unique_inputs_from_simgr:
+                                unique_inputs_from_simgr.add(result)
+                                workspace.cartprograph.client.send_input(
+                                    1, result + "\n"
+                                )
+                    return original_finish(*args, **kwargs)
+
+                job.finish = new_finish.__get__(job)
+            return original_add_job(job)
+
+        workspace.instance.add_job = new_add_job.__get__(workspace.instance)
+
     def handle_filter(self, context_menu):
         addr = context_menu.insn_addr
         cfg = self.workspace.instance.cfg
