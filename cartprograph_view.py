@@ -10,7 +10,11 @@ from PySide2.QtWidgets import (
     QLineEdit,
     QTableWidgetItem,
     QAbstractItemView,
-    QInputDialog, QTabWidget, QWidget, QHBoxLayout, QApplication,
+    QInputDialog,
+    QTabWidget,
+    QWidget,
+    QHBoxLayout,
+    QApplication,
 )
 from PySide2.QtCore import Qt, QSize
 from qtpy import QtWidgets
@@ -79,7 +83,10 @@ class CartprographView(BaseView):
         # check if id exists already
         if id in self.workspace.cartprograph.nodes:
             return
-        if id in self.workspace.cartprograph.visibility and self.workspace.cartprograph.visibility[id] != Vis.VISIBLE:
+        if (
+            id in self.workspace.cartprograph.visibility
+            and self.workspace.cartprograph.visibility[id] != Vis.VISIBLE
+        ):
             return
         self.workspace.cartprograph.nodes.update(
             {
@@ -94,9 +101,7 @@ class CartprographView(BaseView):
             }
         )
         if not id in self.workspace.cartprograph.visibility:
-            self.workspace.cartprograph.visibility.update({
-                id: Vis.VISIBLE
-            })
+            self.workspace.cartprograph.visibility.update({id: Vis.VISIBLE})
 
     def label_context_menu(self, id, pos):
         self._label_menu.id = id
@@ -107,8 +112,10 @@ class CartprographView(BaseView):
             self.select_item(id)
             event.accept()
 
-
-        elif event.button() == Qt.RightButton and QApplication.keyboardModifiers() == Qt.NoModifier:
+        elif (
+            event.button() == Qt.RightButton
+            and QApplication.keyboardModifiers() == Qt.NoModifier
+        ):
             self.label_context_menu(id, QCursor.pos())
             event.accept()
 
@@ -156,8 +163,8 @@ class CartprographView(BaseView):
         if (id_from, id_to) in self.workspace.cartprograph.edges:
             return
         if any(
-                self.workspace.cartprograph.visibility.get(id_) != Vis.VISIBLE
-                for id_ in [id_from, id_to]
+            self.workspace.cartprograph.visibility.get(id_) != Vis.VISIBLE
+            for id_ in [id_from, id_to]
         ):
             return
         self.workspace.cartprograph.edges.update({(id_from, id_to): "TEMPORARY"})
@@ -167,8 +174,11 @@ class CartprographView(BaseView):
         )
 
     def deselect_all_items(self):
-        if isinstance(self.selected_item_id,
-                      int) and not self.selected_item_id == id and self.selected_item_id in self.workspace.cartprograph.nodes:
+        if (
+            isinstance(self.selected_item_id, int)
+            and not self.selected_item_id == id
+            and self.selected_item_id in self.workspace.cartprograph.nodes
+        ):
             self.workspace.cartprograph.nodes[self.selected_item_id].selected = False
         self.selected_item_id = None
         for n in self.highlighted_item_ids:
@@ -218,38 +228,47 @@ class CartprographView(BaseView):
             # no filters to apply, set all non-deleted nodes to visible
             for id in self.workspace.cartprograph.graph.nodes:
                 if self.workspace.cartprograph.visibility[id] != Vis.DELETED:
-                    self.workspace.cartprograph.visibility.update({
-                        id: Vis.VISIBLE
-                    })
+                    self.workspace.cartprograph.visibility.update({id: Vis.VISIBLE})
         else:
             # otherwise apply all filters
             visible_nodes = set()
             for path, trace in self.path_traces():
-                if all(trace_filter(trace) for trace_filter in self.workspace.cartprograph.filters):
+                if all(
+                    trace_filter(trace)
+                    for trace_filter in self.workspace.cartprograph.filters
+                ):
                     visible_nodes |= set(path)
             print(visible_nodes)
             print(self.workspace.cartprograph.visibility)
             for id in self.workspace.cartprograph.graph.nodes:
-                #TODO: un-f*** this nightmare
-                #not sure if first half of this check is necessary.
-                if id not in self.workspace.cartprograph.visibility or id not in self.workspace.cartprograph.nodes:
+                # TODO: un-f*** this nightmare
+                # not sure if first half of this check is necessary.
+                if (
+                    id not in self.workspace.cartprograph.visibility
+                    or id not in self.workspace.cartprograph.nodes
+                ):
                     continue
                 if self.workspace.cartprograph.visibility[id] != Vis.DELETED:
                     if id in visible_nodes:
-                        self.workspace.cartprograph.visibility.update({
-                            id: Vis.VISIBLE
-                        })
+                        self.workspace.cartprograph.visibility.update({id: Vis.VISIBLE})
                     else:
-                        if self.workspace.cartprograph.nodes[id].type == "pending_input" and \
-                                self.workspace.cartprograph.visibility[
-                                    list(self.workspace.cartprograph.graph.predecessors(id))[0]] == Vis.VISIBLE:
-                            self.workspace.cartprograph.visibility.update({
-                                id: Vis.VISIBLE
-                            })
+                        if (
+                            self.workspace.cartprograph.nodes[id].type
+                            == "pending_input"
+                            and self.workspace.cartprograph.visibility[
+                                list(
+                                    self.workspace.cartprograph.graph.predecessors(id)
+                                )[0]
+                            ]
+                            == Vis.VISIBLE
+                        ):
+                            self.workspace.cartprograph.visibility.update(
+                                {id: Vis.VISIBLE}
+                            )
                         else:
-                            self.workspace.cartprograph.visibility.update({
-                                id: Vis.HIDDEN
-                            })
+                            self.workspace.cartprograph.visibility.update(
+                                {id: Vis.HIDDEN}
+                            )
 
         print(self.workspace.cartprograph.visibility)
         self.deselect_all_items()
@@ -279,20 +298,20 @@ class CartprographView(BaseView):
         self.console_output.clear()
         html = ""
         for n in nx.shortest_path(
-                self.workspace.cartprograph.graph, source=0, target=id
+            self.workspace.cartprograph.graph, source=0, target=id
         ):
             # TODO: we need to escape any HTML present in data
             node = self.workspace.cartprograph.graph.nodes[n]
             color = (
                 "blue"
                 if node["interactions"]
-                   and node["interactions"][0]["direction"] == "input"
+                and node["interactions"][0]["direction"] == "input"
                 else "black"
             )
             html += (
-                    f'<span style="color: {color}">'
-                    + self.node_show(n).replace("\n", "<br>")
-                    + "</span>"
+                f'<span style="color: {color}">'
+                + self.node_show(n).replace("\n", "<br>")
+                + "</span>"
             )
         self.console_output.appendHtml(html)
 
@@ -306,7 +325,7 @@ class CartprographView(BaseView):
         functable_data = [[], [], []]
         blocktable_data = [[], []]
         for n in nx.shortest_path(
-                self.workspace.cartprograph.graph, source=0, target=id
+            self.workspace.cartprograph.graph, source=0, target=id
         ):
             for syscall in self.workspace.cartprograph.graph.nodes[n]["syscalls"]:
                 functable_data[0].append(syscall["name"])
@@ -387,7 +406,7 @@ class CartprographView(BaseView):
         carttree_dock.setWidget(carttree)
 
         # TODO: THIS NEEDS A REFACTOR.. BAD
-        console_view = self.workspace.view_manager.first_view_in_category('console')
+        console_view = self.workspace.view_manager.first_view_in_category("console")
         console_view.tab_widget = QTabWidget()
         console_view.tab_widget.setTabPosition(QTabWidget.South)
         console_view.ipython_tab = QWidget()
@@ -399,7 +418,9 @@ class CartprographView(BaseView):
         console_view.layout().setContentsMargins(0, 0, 0, 0)
         console_view.layout().addLayout(console_view.tab_layout)
         console_view.min_size = QSize(0, 125)
-        console_view._ipython_widget.push_namespace({'cartprograph': self.workspace.cartprograph})
+        console_view._ipython_widget.push_namespace(
+            {"cartprograph": self.workspace.cartprograph}
+        )
         console_group = QtWidgets.QGroupBox()
         console_group.setLayout(QtWidgets.QVBoxLayout(console_group))
 
@@ -414,8 +435,9 @@ class CartprographView(BaseView):
                 self.selected_item_id, self.console_input.text() + "\n"
             )
         )
-        self.workspace.view_manager.first_view_in_category('console').tab_widget.addTab(console_group,
-                                                                                        "Cartprograph Console")
+        self.workspace.view_manager.first_view_in_category("console").tab_widget.addTab(
+            console_group, "Cartprograph Console"
+        )
 
         table_tabs = QtWidgets.QTabWidget()
         table_functab = QtWidgets.QWidget()
