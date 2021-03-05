@@ -35,7 +35,7 @@ class QProgramTree(QZoomableDraggableGraphicsView):
             return
 
         node_sizes = {node: (node.width, node.height) for node in self.graph.nodes()}
-        layout = GraphLayouter(self.graph, node_sizes, node_compare_key=lambda n: 0)
+        layout = GraphLayouter(self.graph, node_sizes)
 
         scene = self.scene()
 
