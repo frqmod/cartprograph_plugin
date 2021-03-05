@@ -71,6 +71,8 @@ class CartprographView(BaseView):
         for e in G.edges:
             self.add_edge(e[0], e[1])
 
+        self.deselect_all_items()
+
         self._carttree.graph = self.workspace.cartprograph.displayGraph
 
     def add_node(self, id):
@@ -120,9 +122,10 @@ class CartprographView(BaseView):
             self.redraw_graph()
 
     def delete_state(self, id):
-        #self.workspace.cartprograph.visibility[id] = Vis.DELETED
-        for id in self.workspace.cartprograph.graph.descendants:
-            print(id)
+        self.workspace.cartprograph.visibility[id] = Vis.DELETED
+        for id in nx.descendants(self.workspace.cartprograph.graph, id):
+            self.workspace.cartprograph.visibility[id] = Vis.DELETED
+        self.update_graph(self.G)
 
     def store_annotation(self, id, annotation):
         self.workspace.cartprograph.nodes[id].annotation = annotation
@@ -163,18 +166,28 @@ class CartprographView(BaseView):
             self.workspace.cartprograph.nodes[id_to],
         )
 
-    def select_item(self, id):
-        # select next node
-        self.workspace.cartprograph.nodes[id].selected = True
-        if isinstance(self.selected_item_id, int) and not self.selected_item_id == id:
+    def deselect_all_items(self):
+        if isinstance(self.selected_item_id,
+                      int) and not self.selected_item_id == id and self.selected_item_id in self.workspace.cartprograph.nodes:
             self.workspace.cartprograph.nodes[self.selected_item_id].selected = False
-        # remember what we selcted
-        self.selected_item_id = id
+        self.selected_item_id = None
         for n in self.highlighted_item_ids:
             if isinstance(n, tuple):
-                self.workspace.cartprograph.edges[n].highlighted = False
+                if n in self.workspace.cartprograph.edges:
+                    self.workspace.cartprograph.edges[n].highlighted = False
             else:
-                self.workspace.cartprograph.nodes[n].highlighted = False
+                if n in self.workspace.cartprograph.nodes:
+                    self.workspace.cartprograph.nodes[n].highlighted = False
+        self.highlighted_item_ids = []
+
+    def select_item(self, id):
+        # select next node
+        self.deselect_all_items()
+        if id not in self.workspace.cartprograph.nodes:
+            return
+        self.workspace.cartprograph.nodes[id].selected = True
+        # remember what we selcted
+        self.selected_item_id = id
         # highlight path
         path = nx.shortest_path(self.workspace.cartprograph.graph, source=0, target=id)
         for n in path:
@@ -209,20 +222,27 @@ class CartprographView(BaseView):
                         id: Vis.VISIBLE
                     })
         else:
-            #otherwise apply all filters
+            # otherwise apply all filters
             visible_nodes = set()
             for path, trace in self.path_traces():
                 if all(trace_filter(trace) for trace_filter in self.workspace.cartprograph.filters):
                     visible_nodes |= set(path)
-
+            print(visible_nodes)
+            print(self.workspace.cartprograph.visibility)
             for id in self.workspace.cartprograph.graph.nodes:
+                #TODO: un-f*** this nightmare
+                #not sure if first half of this check is necessary.
+                if id not in self.workspace.cartprograph.visibility or id not in self.workspace.cartprograph.nodes:
+                    continue
                 if self.workspace.cartprograph.visibility[id] != Vis.DELETED:
                     if id in visible_nodes:
                         self.workspace.cartprograph.visibility.update({
                             id: Vis.VISIBLE
                         })
                     else:
-                        if self.workspace.cartprograph.nodes[id].type == "pending_input" and self.workspace.cartprograph.visibility[list(self.workspace.cartprograph.graph.predecessors(id))[0]] == Vis.VISIBLE:
+                        if self.workspace.cartprograph.nodes[id].type == "pending_input" and \
+                                self.workspace.cartprograph.visibility[
+                                    list(self.workspace.cartprograph.graph.predecessors(id))[0]] == Vis.VISIBLE:
                             self.workspace.cartprograph.visibility.update({
                                 id: Vis.VISIBLE
                             })
@@ -232,6 +252,8 @@ class CartprographView(BaseView):
                             })
 
         print(self.workspace.cartprograph.visibility)
+        self.deselect_all_items()
+        self.update_tables(None)
         self.update_graph(self.G)
 
     def apply_filter(self, fx):
@@ -275,6 +297,10 @@ class CartprographView(BaseView):
         self.console_output.appendHtml(html)
 
     def update_tables(self, id):
+        if id is None:
+            self.functable.setRowCount(0)  # clear table
+            self.blocktable.setRowCount(0)
+            return
         self.functable.setRowCount(0)  # clear table
         self.blocktable.setRowCount(0)
         functable_data = [[], [], []]
@@ -360,7 +386,7 @@ class CartprographView(BaseView):
         main.setCentralWidget(carttree_dock)
         carttree_dock.setWidget(carttree)
 
-        #TODO: THIS NEEDS A REFACTOR.. BAD
+        # TODO: THIS NEEDS A REFACTOR.. BAD
         console_view = self.workspace.view_manager.first_view_in_category('console')
         console_view.tab_widget = QTabWidget()
         console_view.tab_widget.setTabPosition(QTabWidget.South)
@@ -377,7 +403,6 @@ class CartprographView(BaseView):
         console_group = QtWidgets.QGroupBox()
         console_group.setLayout(QtWidgets.QVBoxLayout(console_group))
 
-
         self.console_output = QPlainTextEdit()
         self.console_output.setReadOnly(True)
         console_group.layout().addWidget(self.console_output)
@@ -389,7 +414,8 @@ class CartprographView(BaseView):
                 self.selected_item_id, self.console_input.text() + "\n"
             )
         )
-        self.workspace.view_manager.first_view_in_category('console').tab_widget.addTab(console_group, "Cartprograph Console")
+        self.workspace.view_manager.first_view_in_category('console').tab_widget.addTab(console_group,
+                                                                                        "Cartprograph Console")
 
         table_tabs = QtWidgets.QTabWidget()
         table_functab = QtWidgets.QWidget()

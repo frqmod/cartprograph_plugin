@@ -19,7 +19,7 @@ class QCartBlockContextMenu(Menu):
         self.cartprograph_view.annotate_state(self.id)
 
     def _delete_state(self):
-        print("DELETE")
+        self.cartprograph_view.delete_state(self.id)
 
 
 
